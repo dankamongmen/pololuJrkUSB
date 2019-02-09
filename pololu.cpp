@@ -1,6 +1,7 @@
 #include <poll.h>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 #include <cstdlib>
 #include <fcntl.h>
 #include <iostream>
@@ -21,23 +22,31 @@ KeyboardHelp() {
 }
 
 static void
-ReadJRKVariable(int cmd, int fd) {
-  (void)cmd; (void)fd; // FIXME
+WriteJRKCommand(int cmd, int fd) {
+  assert(cmd >=0);
+  assert(cmd < 0x100); // commands are a single byte
+  unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
+  auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
+  if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
+    std::cerr << "error writing command to " << fd << ": " << strerror(errno) << std::endl;
+    // FIXME throw exception? hrmmmm
+  }
+  std::cout << "wrote to " << fd << ": " << ss << std::endl;
 }
 
 static void
 ReadJRKInput(int fd) {
-  ReadJRKVariable(0xa1, fd);
+  WriteJRKCommand(0xa1, fd);
 }
 
 static void
 ReadJRKFeedback(int fd) {
-  ReadJRKVariable(0xa3, fd);
+  WriteJRKCommand(0xa3, fd);
 }
 
 static void
 ReadJRKTarget(int fd) {
-  ReadJRKVariable(0xa5, fd);
+  WriteJRKCommand(0xa5, fd);
 }
 
 static void
@@ -97,7 +106,7 @@ int main(int argc, const char** argv) {
     usage(std::cerr, EXIT_FAILURE);
   }
   const char* dev = argv[argc - 1];
-  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK); // FIMXE
+  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK); // FIMXE need we be nonblocking?
   if(fd < 0){
     std::cerr << "couldn't open " << dev << ": " << strerror(errno) << std::endl;
     usage(std::cerr, EXIT_FAILURE);
