@@ -16,10 +16,42 @@ usage(std::ostream& os, int ret) {
 }
 
 static void
-HandleKeypress(int fd) {
+KeyboardHelp() {
+  std::cout << "(i) read input (t) read target (f) read feedback (h) help" << std::endl;
+}
+
+static void
+ReadJRKVariable(int cmd, int fd) {
+  (void)cmd; (void)fd; // FIXME
+}
+
+static void
+ReadJRKInput(int fd) {
+  ReadJRKVariable(0xa1, fd);
+}
+
+static void
+ReadJRKFeedback(int fd) {
+  ReadJRKVariable(0xa3, fd);
+}
+
+static void
+ReadJRKTarget(int fd) {
+  ReadJRKVariable(0xa5, fd);
+}
+
+static void
+HandleKeypress(int fd, int usbfd) {
   char buf[1];
   while((read(fd, buf, sizeof(buf))) == 1){
-    std::cout << "keypress: " << buf[0] << std::endl; // FIXME
+    switch(buf[0]){
+      case 'h': KeyboardHelp(); break;
+      case 'i': ReadJRKInput(usbfd); break;
+      case 't': ReadJRKTarget(usbfd); break;
+      case 'f': ReadJRKFeedback(usbfd); break;
+      default:
+        break;
+    }
   }
   if(errno != EAGAIN){
     std::cerr << "error reading keypress: " << strerror(errno) << std::endl;
@@ -49,7 +81,7 @@ HandleJRK(int keyin, int usb) {
     for(auto i = 0u ; i < nfds ; ++i){
       if(pfds[i].revents){
         if(pfds[i].fd == keyin){
-          HandleKeypress(keyin);
+          HandleKeypress(keyin, usb);
         }else if(pfds[i].fd == usb){
           HandleUSB(usb);
         }else{
@@ -84,6 +116,8 @@ int main(int argc, const char** argv) {
       << strerror(errno) << std::endl;
     return EXIT_FAILURE;
   }
+  std::cout << "Opened Pololu jrk on fd " << fd << " at " << dev << std::endl;
+  KeyboardHelp();
   HandleJRK(infd, fd);
   if(tcsetattr(infd, TCSANOW, &oldterm)){
     std::cerr << "couldn't restore terminal settings on " << infd << ": "
