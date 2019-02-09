@@ -2,6 +2,8 @@
 .PHONY: all bin clean
 .DEFAULT_GOAL:=all
 
+CFLAGS:=-W -Wall -Werror
+
 BIN:=pololu
 
 all: bin
