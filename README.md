@@ -13,10 +13,10 @@ available, though this program assumes USB serial. The control model is ACM,
 supported by the cdc_acm Linux kernel module.
 
 * [jrk 21v3](https://www.pololu.com/product/1392): 5V--28V, 3A continuous, 5A peak
- * Vendor: 0x1ffb
- * Device: 0x0083
+  * Vendor: 0x1ffb
+  * Device: 0x0083
 * [jrk 12v12](https://www.pololu.com/product/1393): 6V--16V, 12A continous, 30A peak
- * Vendor: 0x1ffb
+  * Vendor: 0x1ffb
 
 ## Usage
 
