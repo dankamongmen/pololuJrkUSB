@@ -32,6 +32,7 @@ a keypress of 'h'. Other commands include:
 * 'f': Read feedback
 * 'i': Read input
 * 't': Read target
+* 'e': Read error flags
 
 ## Copyright and thanks
 

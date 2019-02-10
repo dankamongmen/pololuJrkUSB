@@ -19,7 +19,8 @@ usage(std::ostream& os, int ret) {
 
 static void
 KeyboardHelp() {
-  std::cout << "(i) read input (t) read target (f) read feedback (h) help" << std::endl;
+  std::cout << "(i) read input (t) read target (f) read feedback (e) read errors" << "\n";
+  std::cout << "(h) print help" << std::endl;
 }
 
 static void
@@ -50,6 +51,11 @@ ReadJRKTarget(int fd) {
 }
 
 static void
+ReadJRKErrors(int fd) {
+  WriteJRKCommand(0xb5, fd);
+}
+
+static void
 HandleKeypress(int fd, int usbfd) {
   char buf[1];
   errno = 0;
@@ -59,6 +65,7 @@ HandleKeypress(int fd, int usbfd) {
       case 'i': ReadJRKInput(usbfd); break;
       case 't': ReadJRKTarget(usbfd); break;
       case 'f': ReadJRKFeedback(usbfd); break;
+      case 'e': ReadJRKErrors(usbfd); break;
       default:
         break;
     }
@@ -154,7 +161,7 @@ int main(int argc, const char** argv) {
 
   // Open the USB serial device, and put it in raw mode
   const char* dev = argv[argc - 1];
-  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK);
+  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
   if(fd < 0){
     std::cerr << "couldn't open " << dev << ": " << strerror(errno) << std::endl;
     usage(std::cerr, EXIT_FAILURE);
