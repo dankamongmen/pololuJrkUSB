@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <fcntl.h>
+#include <iomanip>
 #include <iostream>
 #include <unistd.h>
 #include <termios.h>
@@ -31,7 +32,6 @@ WriteJRKCommand(int cmd, int fd) {
     std::cerr << "error writing command to " << fd << ": " << strerror(errno) << std::endl;
     // FIXME throw exception? hrmmmm
   }
-  std::cout << "wrote to " << fd << ": " << ss << std::endl;
 }
 
 static void
@@ -52,6 +52,7 @@ ReadJRKTarget(int fd) {
 static void
 HandleKeypress(int fd, int usbfd) {
   char buf[1];
+  errno = 0;
   while((read(fd, buf, sizeof(buf))) == 1){
     switch(buf[0]){
       case 'h': KeyboardHelp(); break;
@@ -68,16 +69,39 @@ HandleKeypress(int fd, int usbfd) {
   }
 }
 
+static inline
+std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
+  std::ios state(NULL);
+  state.copyfmt(s);
+  s << std::hex;
+  for(size_t i = 0 ; i < len ; ++i){
+    s << std::setfill('0') << std::setw(2) << (int)data[i];
+  }
+  s.copyfmt(state);
+  return s;
+}
+
 static void
 HandleUSB(int fd) {
-  std::cout << "reading from " << fd << std::endl; // FIXME
+  constexpr auto bufsize = 2;
+  unsigned char valbuf[bufsize];
+  errno = 0;
+
+  while((read(fd, valbuf, bufsize)) == bufsize){
+    std::cout << "received bytes: 0x";
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << std::endl;
+  }
+  if(errno != EAGAIN){
+    std::cerr << "error reading serial: " << strerror(errno) << std::endl;
+    // FIXME throw exception?
+  }
 }
 
 static void
 HandleJRK(int keyin, int usb) {
   struct pollfd pfds[2] = {
-    { .fd = keyin, .events = POLLIN, .revents = 0, },
-    { .fd = usb, .events = POLLIN, .revents = 0, },
+    { .fd = usb, .events = POLLIN | POLLPRI, .revents = 0, },
+    { .fd = keyin, .events = POLLIN | POLLPRI, .revents = 0, },
   };
   const auto nfds = sizeof(pfds) / sizeof(*pfds);
   while(1){
@@ -101,17 +125,44 @@ HandleJRK(int keyin, int usb) {
   }
 }
 
+void FDSetNonblocking(int fd) {
+  int flags = fcntl(fd, F_GETFL, 0);
+  if(flags < 0){
+    throw std::runtime_error("couldn't get fd flags");
+  }
+  flags |= O_NONBLOCK;
+  if(0 != fcntl(fd, F_SETFL, flags)){
+    throw std::runtime_error("couldn't set fd flags");
+  }
+}
+
+void FDSetRaw(int fd) {
+  struct termios term;
+  if(tcgetattr(fd, &term)){
+    throw std::runtime_error("couldn't get serial settings");
+  }
+  term.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  if(tcsetattr(fd, TCSANOW, &term)){
+    throw std::runtime_error("couldn't set serial raw");
+  }
+}
+
 int main(int argc, const char** argv) {
   if(argc != 2){
     usage(std::cerr, EXIT_FAILURE);
   }
+
+  // Open the USB serial device, and put it in raw mode
   const char* dev = argv[argc - 1];
-  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK); // FIMXE need we be nonblocking?
+  auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK);
   if(fd < 0){
     std::cerr << "couldn't open " << dev << ": " << strerror(errno) << std::endl;
     usage(std::cerr, EXIT_FAILURE);
   }
+
+  // Disable terminal buffering on stdin, so we can get keypresses
   auto infd = STDIN_FILENO;
+  FDSetNonblocking(infd);
   struct termios oldterm;
   if(tcgetattr(infd, &oldterm)){
     std::cerr << "couldn't save terminal settings on " << infd << ": "
@@ -125,9 +176,12 @@ int main(int argc, const char** argv) {
       << strerror(errno) << std::endl;
     return EXIT_FAILURE;
   }
+
   std::cout << "Opened Pololu jrk on fd " << fd << " at " << dev << std::endl;
   KeyboardHelp();
   HandleJRK(infd, fd);
+
+  // Restore terminal settings
   if(tcsetattr(infd, TCSANOW, &oldterm)){
     std::cerr << "couldn't restore terminal settings on " << infd << ": "
       << strerror(errno) << std::endl;
