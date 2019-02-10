@@ -1,3 +1,4 @@
+#include <queue>
 #include <poll.h>
 #include <cstdio>
 #include <cstring>
@@ -10,12 +11,19 @@
 #include <termios.h>
 #include <sys/types.h>
 
+constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
+constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa3;
+constexpr unsigned char JRKCMD_READ_TARGET = 0xa5;
+constexpr unsigned char JRKCMD_READ_ERRORS = 0xb5;
+
 static void
 usage(std::ostream& os, int ret) {
   os << "usage: pololu dev\n";
   os << std::endl;
   exit(ret);
 }
+
+std::queue<unsigned char> sent_cmds;
 
 static void
 KeyboardHelp() {
@@ -36,23 +44,33 @@ WriteJRKCommand(int cmd, int fd) {
 }
 
 static void
+SendJRKReadCommand(int cmd, std::queue<unsigned char>& cmdq, int fd) {
+  WriteJRKCommand(cmd, fd);
+  cmdq.push(cmd);
+}
+
+static void
 ReadJRKInput(int fd) {
-  WriteJRKCommand(0xa1, fd);
+  constexpr unsigned char cmd = JRKCMD_READ_INPUT;
+  SendJRKReadCommand(cmd, sent_cmds, fd);
 }
 
 static void
 ReadJRKFeedback(int fd) {
-  WriteJRKCommand(0xa3, fd);
+  constexpr auto cmd = JRKCMD_READ_FEEDBACK;
+  SendJRKReadCommand(cmd, sent_cmds, fd);
 }
 
 static void
 ReadJRKTarget(int fd) {
-  WriteJRKCommand(0xa5, fd);
+  constexpr auto cmd = JRKCMD_READ_TARGET;
+  SendJRKReadCommand(cmd, sent_cmds, fd);
 }
 
 static void
 ReadJRKErrors(int fd) {
-  WriteJRKCommand(0xb5, fd);
+  constexpr auto cmd = JRKCMD_READ_ERRORS;
+  SendJRKReadCommand(cmd, sent_cmds, fd);
 }
 
 static void
@@ -95,8 +113,30 @@ HandleUSB(int fd) {
   errno = 0;
 
   while((read(fd, valbuf, bufsize)) == bufsize){
+    int sword = valbuf[1] * 256 + valbuf[0];
     std::cout << "received bytes: 0x";
-    HexOutput(std::cout, valbuf, sizeof(valbuf)) << std::endl;
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;
+    if(sent_cmds.empty()){
+      std::cerr << "warning: no outstanding command for recv" << std::endl;
+      continue;
+    }
+    unsigned char expcmd = sent_cmds.front();
+    sent_cmds.pop();
+    switch(expcmd){
+      case JRKCMD_READ_INPUT: std::cout << "Input is " << sword; break;
+      case JRKCMD_READ_FEEDBACK: std::cout << "Feedback is " << sword; break;
+      case JRKCMD_READ_TARGET: std::cout << "Target is " << sword; break;
+      case JRKCMD_READ_ERRORS:
+        std::cout << "Error bits: " <<
+          ((sword & 0x0001) ? "AwaitCmd" : "") <<
+          ((sword & 0x0002) ? "NoPower" : "") <<
+          ((sword & 0x0004) ? "DrvError/NoPwr" : "") <<
+          ((sword & 0x0008) ? "InvInput" : "") <<
+          std::endl;
+        break;
+      default:
+        std::cerr << "unexpected command " << (int)expcmd;
+    }
   }
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
@@ -186,6 +226,8 @@ int main(int argc, const char** argv) {
 
   std::cout << "Opened Pololu jrk on fd " << fd << " at " << dev << std::endl;
   KeyboardHelp();
+  ReadJRKErrors(fd);
+  ReadJRKTarget(fd);
   HandleJRK(infd, fd);
 
   // Restore terminal settings
