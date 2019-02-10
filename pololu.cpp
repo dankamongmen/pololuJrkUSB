@@ -128,10 +128,19 @@ HandleUSB(int fd) {
       case JRKCMD_READ_TARGET: std::cout << "Target is " << sword; break;
       case JRKCMD_READ_ERRORS:
         std::cout << "Error bits: " <<
-          ((sword & 0x0001) ? "AwaitCmd" : "") <<
+          ((sword & 0x0001) ? "AwaitingCmd" : "") <<
           ((sword & 0x0002) ? "NoPower" : "") <<
-          ((sword & 0x0004) ? "DrvError/NoPwr" : "") <<
-          ((sword & 0x0008) ? "InvInput" : "") <<
+          ((sword & 0x0004) ? "DriveError" : "") <<
+          ((sword & 0x0008) ? "InvalidInput" : "") <<
+          ((sword & 0x0010) ? "InputDisconn" : "") <<
+          ((sword & 0x0020) ? "FdbckDisconn" : "") <<
+          ((sword & 0x0040) ? "AmpsExceeded" : "") <<
+          ((sword & 0x0080) ? "SerialSig" : "") <<
+          ((sword & 0x0100) ? "UARTOflow" : "") <<
+          ((sword & 0x0200) ? "SerialOflow" : "") <<
+          ((sword & 0x0400) ? "SerialCRC" : "") <<
+          ((sword & 0x0800) ? "SerialProto" : "") <<
+          ((sword & 0x1000) ? "TimeoutRX" : "") <<
           std::endl;
         break;
       default:
