@@ -1,6 +1,8 @@
 #include <queue>
+#include <string>
 #include <thread>
 #include <cstdio>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -27,6 +29,55 @@ KeyboardHelp(std::ostream& s) {
   s << std::endl;
 }
 
+class SplitException : public std::runtime_error {
+public:
+  SplitException(const std::string& what) :
+    std::runtime_error(what) {}
+};
+
+// Split a line into whitespace-delimited tokens, supporting simple quoting
+// using single quotes, plus escaping using backslash.
+static std::vector<std::string>
+SplitInput(const char* line) {
+  std::vector<std::string> tokens;
+  std::vector<char> token;
+  bool quoted = false;
+  bool escaped = false;
+  int offset = 0;
+  char c;
+  while( (c = line[offset]) ){
+    if(c == '\\' && !escaped){
+      escaped = true;
+    }else if(escaped){
+      token.push_back(c);
+      escaped = false;
+    }else if(quoted){
+      if(c == '\''){
+        quoted = false;
+      }else{
+        token.push_back(c);
+      }
+    }else if(isspace(c)){
+      if(token.size()){
+        tokens.emplace_back(std::string(token.begin(), token.end()));
+        token.clear();
+      }
+    }else if(c == '\''){
+      quoted = true;
+    }else{
+      token.push_back(c);
+    }
+    ++offset;
+  }
+  if(token.size()){
+    tokens.emplace_back(std::string(token.begin(), token.end()));
+  }
+  if(quoted){
+    throw SplitException("unterminated single quote");
+  }
+  return tokens;
+}
+
 #define ANSI_WHITE "\033[1;37m"
 #define RL_START "\x01" // RL_PROMPT_START_IGNORE
 #define RL_END "\x02"   // RL_PROMPT_END_IGNORE
@@ -42,7 +93,19 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     if(line == nullptr){
       break;
     }
-    // FIXME tokenize read line
+    std::vector<std::string> tokes;
+    try{
+      tokes = SplitInput(line);
+    }catch(SplitException& e){
+      std::cerr << e.what() << std::endl;
+      add_history(line);
+      free(line);
+      continue;
+    }
+    if(tokes.size() == 0){
+      free(line);
+      continue;
+    }
     add_history(line);
     (void)poller; // FIXME run command
     free(line);
