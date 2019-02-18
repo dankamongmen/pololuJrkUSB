@@ -23,6 +23,16 @@ supported by the cdc_acm Linux kernel module.
   * 6V–16V
   * 12A continous, 30A peak
 
+## Building
+
+Run `make`.
+
+### Dependencies
+
+* GNU Make
+* C++ compiler
+* libreadline
+
 ## Usage
 
 Launch the program with the USB serial device node as its argument for
