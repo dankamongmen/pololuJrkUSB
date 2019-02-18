@@ -120,6 +120,9 @@ void Poller::HandleUSB() {
   unsigned char valbuf[bufsize];
   errno = 0;
 
+  // FIXME hack to get readline prompt reprintned, but this doesn't belong
+  // here, and indeed can't even safely access these readline variables
+  // outside of libreadline context
   char* saved_line;
   int saved_point;
   if(rl_readline_state & RL_STATE_READCMD){
