@@ -2,6 +2,7 @@
 #define POLOLUJRKUSB_POLLER
 
 #include <queue>
+#include <ostream>
 
 namespace PololuJrkUSB {
 
@@ -19,6 +20,7 @@ private:
   int devfd;
   std::queue<unsigned char> sent_cmds;
 
+  std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len);
   int OpenDev(const char* dev);
   void SendJRKReadCommand(int cmd);
   void WriteJRKCommand(int cmd, int fd);

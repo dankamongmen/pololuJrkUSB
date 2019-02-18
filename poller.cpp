@@ -87,8 +87,7 @@ void Poller::ReadJRKErrors() {
   SendJRKReadCommand(cmd);
 }
 
-static inline
-std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
+std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
   std::ios state(NULL);
   state.copyfmt(s);
   s << std::hex;
@@ -106,8 +105,8 @@ void Poller::HandleUSB() {
 
   while((read(devfd, valbuf, bufsize)) == bufsize){
     int sword = valbuf[1] * 256 + valbuf[0];
-    std::cout << "received bytes: 0x";
-    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;
+    /*std::cout << "received bytes: 0x";
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;*/
     if(sent_cmds.empty()){
       std::cerr << "warning: no outstanding command for recv" << std::endl;
       continue;
