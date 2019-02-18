@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <readline/readline.h>
 #include "poller.h"
 
 namespace PololuJrkUSB {
@@ -119,6 +120,15 @@ void Poller::HandleUSB() {
   unsigned char valbuf[bufsize];
   errno = 0;
 
+  char* saved_line;
+  int saved_point;
+  if(rl_readline_state & RL_STATE_READCMD){
+    saved_point = rl_point;
+    saved_line = rl_copy_text(0, rl_end);
+    rl_save_prompt();
+    rl_replace_line("", 0);
+    rl_redisplay();
+  }
   while((read(devfd, valbuf, bufsize)) == bufsize){
     int sword = valbuf[1] * 256 + valbuf[0];
     /*std::cout << "received bytes: 0x";
@@ -153,6 +163,13 @@ void Poller::HandleUSB() {
       default:
         std::cerr << "unexpected command " << (int)expcmd << std::endl;
     }
+  }
+  if(rl_readline_state & RL_STATE_READCMD){
+    rl_restore_prompt();
+    rl_replace_line(saved_line, 0);
+    rl_point = saved_point;
+    rl_redisplay();
+    free(saved_line);
   }
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
