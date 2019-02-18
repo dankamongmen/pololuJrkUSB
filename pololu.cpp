@@ -19,16 +19,6 @@ usage(std::ostream& os, int ret) {
   exit(ret);
 }
 
-static void
-KeyboardHelp(std::ostream& s) {
-  s << "help: print this help text\n";
-  s << "feedback: send a read feedback command\n";
-  s << "target: send a read target command\n";
-  s << "input: send a read input command\n";
-  s << "eflags: send a read error flags command\n";
-  s << std::endl;
-}
-
 class SplitException : public std::runtime_error {
 public:
   SplitException(const std::string& what) :
@@ -79,16 +69,30 @@ SplitInput(const char* line) {
 }
 
 #define ANSI_WHITE "\033[1;37m"
+#define ANSI_GREY "\033[0;37m"
 #define RL_START "\x01" // RL_PROMPT_START_IGNORE
 #define RL_END "\x02"   // RL_PROMPT_END_IGNORE
 
 static void
 ReadlineLoop(PololuJrkUSB::Poller& poller) {
+  const struct {
+    const std::string cmd;
+    void (PololuJrkUSB::Poller::* fxn)(std::vector<std::string>::iterator,
+            std::vector<std::string>::iterator);
+    const char* help;
+  } cmdtable[] = {
+    { .cmd = "quit", .fxn = &PololuJrkUSB::Poller::StopPolling, .help = "exit program", },
+    { .cmd = "feedback", .fxn = &PololuJrkUSB::Poller::ReadJRKFeedback, .help = "send a read feedback request", },
+    { .cmd = "target", .fxn = &PololuJrkUSB::Poller::ReadJRKTarget, .help = "send a read target request", },
+    { .cmd = "input", .fxn = &PololuJrkUSB::Poller::ReadJRKInput, .help = "send a read input command", },
+    { .cmd = "eflags", .fxn = &PololuJrkUSB::Poller::ReadJRKErrors, .help = "send a read error flags command", },
+    { .cmd = "", .fxn = nullptr, .help = "", },
+  }, *c;
   char* line;
   while(1){
     line = readline(RL_START "\033[0;35m" RL_END
       "[" RL_START "\033[0;36m" RL_END
-      "catena" RL_START "\033[0;35m" RL_END
+      "pololu" RL_START "\033[0;35m" RL_END
       "] " RL_START ANSI_WHITE RL_END);
     if(line == nullptr){
       break;
@@ -107,7 +111,20 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
       continue;
     }
     add_history(line);
-    (void)poller; // FIXME run command
+    for(c = cmdtable ; c->fxn ; ++c){
+      if(c->cmd == tokes[0]){
+        (poller.*(c->fxn))(tokes.begin() + 1, tokes.end());
+        break;
+      }
+    }
+    if(c->fxn == nullptr && tokes[0] != "help"){
+      std::cerr << "unknown command: " << tokes[0] << std::endl;
+    }else if(c->fxn == nullptr){ // display help
+      for(c = cmdtable ; c->fxn ; ++c){
+        std::cout << c->cmd << ANSI_GREY " " << c->help << ANSI_WHITE "\n";
+      }
+      std::cout << "help" ANSI_GREY ": list commands" ANSI_WHITE << std::endl;
+    }
     free(line);
   }
 }
@@ -120,13 +137,14 @@ int main(int argc, const char** argv) {
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
-  auto poller = PololuJrkUSB::Poller(dev);
+  PololuJrkUSB::Poller poller(dev);
 
-  KeyboardHelp(std::cout);
-  poller.ReadJRKErrors();
-  poller.ReadJRKTarget();
+  std::vector<std::string> empty;
+  poller.ReadJRKErrors(empty.begin(), empty.end());
+  poller.ReadJRKTarget(empty.begin(), empty.end());
   std::thread usb(&PololuJrkUSB::Poller::Poll, std::ref(poller));
   ReadlineLoop(poller);
+  // FIXME join on poller
 
   return EXIT_SUCCESS;
 }

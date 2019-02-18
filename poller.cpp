@@ -38,7 +38,8 @@ int Poller::OpenDev(const char* dev) {
 }
 
 Poller::Poller(const char* dev) :
-devfd(-1) {
+devfd(-1),
+cancelled(false) {
     devfd = OpenDev(dev);
     std::cout << "Opened Pololu jrk " << dev << " at fd " << devfd << std::endl;
 }
@@ -48,6 +49,13 @@ Poller::~Poller() {
     close(devfd); // FIXME warning on error?
     devfd = -1;
   }
+}
+
+void Poller::StopPolling(std::vector<std::string>::iterator begin,
+                          std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  cancelled.store(true);
+  // FIXME interrupt poller
 }
 
 void Poller::WriteJRKCommand(int cmd, int fd) {
@@ -67,22 +75,30 @@ void Poller::SendJRKReadCommand(int cmd) {
   sent_cmds.push(cmd);
 }
 
-void Poller::ReadJRKInput() {
+void Poller::ReadJRKInput(std::vector<std::string>::iterator begin,
+                          std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
   constexpr unsigned char cmd = JRKCMD_READ_INPUT;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKFeedback() {
+void Poller::ReadJRKFeedback(std::vector<std::string>::iterator begin,
+                              std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
   constexpr auto cmd = JRKCMD_READ_FEEDBACK;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKTarget() {
+void Poller::ReadJRKTarget(std::vector<std::string>::iterator begin,
+                            std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
   constexpr auto cmd = JRKCMD_READ_TARGET;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKErrors() {
+void Poller::ReadJRKErrors(std::vector<std::string>::iterator begin,
+                            std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
   constexpr auto cmd = JRKCMD_READ_ERRORS;
   SendJRKReadCommand(cmd);
 }
@@ -151,7 +167,7 @@ void Poller::Poll() {
     { .fd = devfd, .events = POLLIN | POLLPRI, .revents = 0, },
   };
   const auto nfds = sizeof(pfds) / sizeof(*pfds);
-  while(1){
+  while(!cancelled.load()){
     auto pret = poll(pfds, nfds, -1);
     if(pret < 0){
       std::cerr << "error polling " << nfds << " fds: " << strerror(errno) << std::endl;
