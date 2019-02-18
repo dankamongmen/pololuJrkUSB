@@ -54,7 +54,7 @@ Poller::~Poller() {
 
 void Poller::StopPolling() {
   cancelled.store(true);
-  // FIXME interrupt poller
+  // FIXME interrupt poller, and we can stop ticking in poll()
 }
 
 void Poller::WriteJRKCommand(int cmd, int fd) {
@@ -160,7 +160,8 @@ void Poller::Poll() {
   };
   const auto nfds = sizeof(pfds) / sizeof(*pfds);
   while(!cancelled.load()){
-    auto pret = poll(pfds, nfds, -1);
+    // FIXME should not need to tick, but need signal from StopPolling()
+    auto pret = poll(pfds, nfds, 100);
     if(pret < 0){
       std::cerr << "error polling " << nfds << " fds: " << strerror(errno) << std::endl;
       continue;
