@@ -13,16 +13,11 @@ public:
   Poller(const char* dev); // throws on failure to open device
   virtual ~Poller();
   void Poll();
-  void ReadJRKInput(std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end);
-  void ReadJRKFeedback(std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end);
-  void ReadJRKTarget(std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end);
-  void ReadJRKErrors(std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end);
-  void StopPolling(std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end);
+  void ReadJRKInput();
+  void ReadJRKFeedback();
+  void ReadJRKTarget();
+  void ReadJRKErrors();
+  void StopPolling();
 
 private:
   int devfd;

@@ -25,6 +25,41 @@ public:
     std::runtime_error(what) {}
 };
 
+void ReadJRKInput(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  poller.ReadJRKInput();
+}
+
+void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
+                      std::vector<std::string>::iterator begin,
+                      std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  poller.ReadJRKFeedback();
+}
+
+void ReadJRKTarget(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  poller.ReadJRKTarget();
+}
+
+void ReadJRKErrors(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  poller.ReadJRKErrors();
+}
+
+void StopPolling(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  (void)begin; (void)end; // FIXME
+  poller.StopPolling();
+}
+
 // Split a line into whitespace-delimited tokens, supporting simple quoting
 // using single quotes, plus escaping using backslash.
 static std::vector<std::string>
@@ -77,15 +112,16 @@ static void
 ReadlineLoop(PololuJrkUSB::Poller& poller) {
   const struct {
     const std::string cmd;
-    void (PololuJrkUSB::Poller::* fxn)(std::vector<std::string>::iterator,
-            std::vector<std::string>::iterator);
+    void (* fxn)(PololuJrkUSB::Poller&,
+                 std::vector<std::string>::iterator,
+                 std::vector<std::string>::iterator);
     const char* help;
   } cmdtable[] = {
-    { .cmd = "quit", .fxn = &PololuJrkUSB::Poller::StopPolling, .help = "exit program", },
-    { .cmd = "feedback", .fxn = &PololuJrkUSB::Poller::ReadJRKFeedback, .help = "send a read feedback request", },
-    { .cmd = "target", .fxn = &PololuJrkUSB::Poller::ReadJRKTarget, .help = "send a read target request", },
-    { .cmd = "input", .fxn = &PololuJrkUSB::Poller::ReadJRKInput, .help = "send a read input command", },
-    { .cmd = "eflags", .fxn = &PololuJrkUSB::Poller::ReadJRKErrors, .help = "send a read error flags command", },
+    { .cmd = "quit", .fxn = &StopPolling, .help = "exit program", },
+    { .cmd = "feedback", .fxn = &ReadJRKFeedback, .help = "send a read feedback request", },
+    { .cmd = "target", .fxn = &ReadJRKTarget, .help = "send a read target request", },
+    { .cmd = "input", .fxn = &ReadJRKInput, .help = "send a read input command", },
+    { .cmd = "eflags", .fxn = &ReadJRKErrors, .help = "send a read error flags command", },
     { .cmd = "", .fxn = nullptr, .help = "", },
   }, *c;
   char* line;
@@ -113,7 +149,7 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     add_history(line);
     for(c = cmdtable ; c->fxn ; ++c){
       if(c->cmd == tokes[0]){
-        (poller.*(c->fxn))(tokes.begin() + 1, tokes.end());
+        (c->fxn)(poller, tokes.begin() + 1, tokes.end());
         break;
       }
     }
@@ -139,9 +175,8 @@ int main(int argc, const char** argv) {
   const char* dev = argv[argc - 1];
   PololuJrkUSB::Poller poller(dev);
 
-  std::vector<std::string> empty;
-  poller.ReadJRKErrors(empty.begin(), empty.end());
-  poller.ReadJRKTarget(empty.begin(), empty.end());
+  poller.ReadJRKErrors();
+  poller.ReadJRKTarget();
   std::thread usb(&PololuJrkUSB::Poller::Poll, std::ref(poller));
   ReadlineLoop(poller);
   // FIXME join on poller

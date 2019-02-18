@@ -52,9 +52,7 @@ Poller::~Poller() {
   }
 }
 
-void Poller::StopPolling(std::vector<std::string>::iterator begin,
-                          std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+void Poller::StopPolling() {
   cancelled.store(true);
   // FIXME interrupt poller
 }
@@ -76,30 +74,22 @@ void Poller::SendJRKReadCommand(int cmd) {
   sent_cmds.push(cmd);
 }
 
-void Poller::ReadJRKInput(std::vector<std::string>::iterator begin,
-                          std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+void Poller::ReadJRKInput() {
   constexpr unsigned char cmd = JRKCMD_READ_INPUT;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKFeedback(std::vector<std::string>::iterator begin,
-                              std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+void Poller::ReadJRKFeedback() {
   constexpr auto cmd = JRKCMD_READ_FEEDBACK;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKTarget(std::vector<std::string>::iterator begin,
-                            std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+void Poller::ReadJRKTarget() {
   constexpr auto cmd = JRKCMD_READ_TARGET;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKErrors(std::vector<std::string>::iterator begin,
-                            std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+void Poller::ReadJRKErrors() {
   constexpr auto cmd = JRKCMD_READ_ERRORS;
   SendJRKReadCommand(cmd);
 }
@@ -120,18 +110,7 @@ void Poller::HandleUSB() {
   unsigned char valbuf[bufsize];
   errno = 0;
 
-  // FIXME hack to get readline prompt reprintned, but this doesn't belong
-  // here, and indeed can't even safely access these readline variables
-  // outside of libreadline context
-  char* saved_line;
-  int saved_point;
-  if(rl_readline_state & RL_STATE_READCMD){
-    saved_point = rl_point;
-    saved_line = rl_copy_text(0, rl_end);
-    rl_save_prompt();
-    rl_replace_line("", 0);
-    rl_redisplay();
-  }
+  // FIXME save readline state
   while((read(devfd, valbuf, bufsize)) == bufsize){
     int sword = valbuf[1] * 256 + valbuf[0];
     /*std::cout << "received bytes: 0x";
@@ -167,13 +146,7 @@ void Poller::HandleUSB() {
         std::cerr << "unexpected command " << (int)expcmd << std::endl;
     }
   }
-  if(rl_readline_state & RL_STATE_READCMD){
-    rl_restore_prompt();
-    rl_replace_line(saved_line, 0);
-    rl_point = saved_point;
-    rl_redisplay();
-    free(saved_line);
-  }
+  // FIXME restore readline state
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
     // FIXME throw exception?
