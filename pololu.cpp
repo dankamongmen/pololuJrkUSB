@@ -28,8 +28,8 @@ public:
 };
 
 void ReadJRKInput(PololuJrkUSB::Poller& poller,
-                    std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end) {
+                  std::vector<std::string>::iterator begin,
+                  std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
@@ -38,8 +38,8 @@ void ReadJRKInput(PololuJrkUSB::Poller& poller,
 }
 
 void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
-                      std::vector<std::string>::iterator begin,
-                      std::vector<std::string>::iterator end) {
+                     std::vector<std::string>::iterator begin,
+                     std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
@@ -48,8 +48,8 @@ void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
 }
 
 void ReadJRKTarget(PololuJrkUSB::Poller& poller,
-                    std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end) {
+                   std::vector<std::string>::iterator begin,
+                   std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
@@ -58,8 +58,8 @@ void ReadJRKTarget(PololuJrkUSB::Poller& poller,
 }
 
 void SetJRKTarget(PololuJrkUSB::Poller& poller,
-                    std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end) {
+                  std::vector<std::string>::iterator begin,
+                  std::vector<std::string>::iterator end) {
   if(begin == end || begin + 1 != end){
     std::cerr << "command requires a single argument [0..4095]" << std::endl;
     return;
@@ -69,8 +69,8 @@ void SetJRKTarget(PololuJrkUSB::Poller& poller,
 }
 
 void ReadJRKErrors(PololuJrkUSB::Poller& poller,
-                    std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end) {
+                   std::vector<std::string>::iterator begin,
+                   std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
@@ -78,9 +78,19 @@ void ReadJRKErrors(PololuJrkUSB::Poller& poller,
   poller.ReadJRKErrors();
 }
 
+void SetJRKOff(PololuJrkUSB::Poller& poller,
+               std::vector<std::string>::iterator begin,
+               std::vector<std::string>::iterator end) {
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
+  poller.SetJRKOff();
+}
+
 void StopPolling(PololuJrkUSB::Poller& poller,
-                    std::vector<std::string>::iterator begin,
-                    std::vector<std::string>::iterator end) {
+                 std::vector<std::string>::iterator begin,
+                 std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
@@ -152,6 +162,7 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     { .cmd = "input", .fxn = &ReadJRKInput, .help = "send a read input command", },
     { .cmd = "eflags", .fxn = &ReadJRKErrors, .help = "send a read error flags command", },
     { .cmd = "settarget", .fxn = &SetJRKTarget, .help = "send set target command (arg: [0..4095])", },
+    { .cmd = "off", .fxn = &SetJRKOff, .help = "send a motor off command", },
     { .cmd = "", .fxn = nullptr, .help = "", },
   }, *c;
   char* line;

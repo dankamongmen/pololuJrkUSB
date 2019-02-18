@@ -44,6 +44,7 @@ the 'help' command. Other commands include:
 * 'target': Read target
 * 'eflags': Read error flags
 * 'settarget': Set target, takes argument between 0 and 4095, inclusive
+* 'off': Turn motor off
 
 ## Copyright and thanks
 

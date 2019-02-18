@@ -19,6 +19,7 @@ constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
 constexpr unsigned char JRKCMD_READ_TARGET = 0xa3;
 constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa5;
 constexpr unsigned char JRKCMD_READ_ERRORS = 0xb5;
+constexpr unsigned char JRKCMD_MOTOR_OFF = 0xff;
 
 int Poller::OpenDev(const char* dev) {
   auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
@@ -95,6 +96,7 @@ void Poller::ReadJRKErrors() {
 }
 
 void Poller::SetJRKTarget(int target) {
+  std::lock_guard<std::mutex> guard(lock);
   if(target < 0 || target > 4095){
     std::cerr << "invalid target " << target << std::endl;
     return; // FIXME throw exception?
@@ -108,6 +110,12 @@ void Poller::SetJRKTarget(int target) {
     std::cerr << "error writing to " << devfd << ": " << strerror(errno) << std::endl;
     return; // FIXME throw exception? hrmmmm
   }
+}
+
+void Poller::SetJRKOff() {
+  std::lock_guard<std::mutex> guard(lock);
+  constexpr auto cmd = JRKCMD_MOTOR_OFF;
+  WriteJRKCommand(cmd, devfd);
 }
 
 std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
