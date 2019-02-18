@@ -43,6 +43,7 @@ the 'help' command. Other commands include:
 * 'input': Read input
 * 'target': Read target
 * 'eflags': Read error flags
+* 'settarget': Set target, takes argument between 0 and 4095, inclusive
 
 ## Copyright and thanks
 

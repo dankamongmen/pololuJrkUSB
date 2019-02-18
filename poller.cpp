@@ -16,8 +16,8 @@
 namespace PololuJrkUSB {
 
 constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
-constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa3;
-constexpr unsigned char JRKCMD_READ_TARGET = 0xa5;
+constexpr unsigned char JRKCMD_READ_TARGET = 0xa3;
+constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa5;
 constexpr unsigned char JRKCMD_READ_ERRORS = 0xb5;
 
 int Poller::OpenDev(const char* dev) {
@@ -94,6 +94,22 @@ void Poller::ReadJRKErrors() {
   SendJRKReadCommand(cmd);
 }
 
+void Poller::SetJRKTarget(int target) {
+  if(target < 0 || target > 4095){
+    std::cerr << "invalid target " << target << std::endl;
+    return; // FIXME throw exception?
+  }
+  unsigned char cmdbuf[] = {
+    (unsigned char)(0xC0 + (target & 0x1F)),
+    (unsigned char)((target >> 5) & 0x7F),
+  };
+  auto ss = ::write(devfd, cmdbuf, sizeof(cmdbuf));
+  if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
+    std::cerr << "error writing to " << devfd << ": " << strerror(errno) << std::endl;
+    return; // FIXME throw exception? hrmmmm
+  }
+}
+
 std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
   std::ios state(NULL);
   state.copyfmt(s);
@@ -113,8 +129,8 @@ void Poller::HandleUSB() {
   // FIXME save readline state
   while((read(devfd, valbuf, bufsize)) == bufsize){
     int sword = valbuf[1] * 256 + valbuf[0];
-    /*std::cout << "received bytes: 0x";
-    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;*/
+    std::cout << "received bytes: 0x";
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;
     if(sent_cmds.empty()){
       std::cerr << "warning: no outstanding command for recv" << std::endl;
       continue;
