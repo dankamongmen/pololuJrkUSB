@@ -115,9 +115,9 @@ void Poller::HandleUSB() {
     unsigned char expcmd = sent_cmds.front();
     sent_cmds.pop();
     switch(expcmd){
-      case JRKCMD_READ_INPUT: std::cout << "Input is " << sword; break;
-      case JRKCMD_READ_FEEDBACK: std::cout << "Feedback is " << sword; break;
-      case JRKCMD_READ_TARGET: std::cout << "Target is " << sword; break;
+      case JRKCMD_READ_INPUT: std::cout << "Input is " << sword << std::endl; break;
+      case JRKCMD_READ_FEEDBACK: std::cout << "Feedback is " << sword << std::endl; break;
+      case JRKCMD_READ_TARGET: std::cout << "Target is " << sword << std::endl; break;
       case JRKCMD_READ_ERRORS:
         std::cout << "Error bits: " <<
           ((sword & 0x0001) ? "AwaitingCmd" : "") <<
@@ -136,7 +136,7 @@ void Poller::HandleUSB() {
           std::endl;
         break;
       default:
-        std::cerr << "unexpected command " << (int)expcmd;
+        std::cerr << "unexpected command " << (int)expcmd << std::endl;
     }
   }
   if(errno != EAGAIN){
