@@ -17,6 +17,7 @@ public:
   void ReadJRKFeedback();
   void ReadJRKTarget();
   void ReadJRKErrors();
+  void SetJRKTarget(int target);
   void StopPolling();
 
 private:

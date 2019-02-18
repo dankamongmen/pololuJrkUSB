@@ -19,6 +19,8 @@ usage(std::ostream& os, int ret) {
   exit(ret);
 }
 
+static bool cancelled = false;
+
 class SplitException : public std::runtime_error {
 public:
   SplitException(const std::string& what) :
@@ -28,36 +30,63 @@ public:
 void ReadJRKInput(PololuJrkUSB::Poller& poller,
                     std::vector<std::string>::iterator begin,
                     std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
   poller.ReadJRKInput();
 }
 
 void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
                       std::vector<std::string>::iterator begin,
                       std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
   poller.ReadJRKFeedback();
 }
 
 void ReadJRKTarget(PololuJrkUSB::Poller& poller,
                     std::vector<std::string>::iterator begin,
                     std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
   poller.ReadJRKTarget();
+}
+
+void SetJRKTarget(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  if(begin == end || begin + 1 != end){
+    std::cerr << "command requires a single argument [0..4095]" << std::endl;
+    return;
+  }
+  auto target = std::stoi(*begin);
+  poller.SetJRKTarget(target);
 }
 
 void ReadJRKErrors(PololuJrkUSB::Poller& poller,
                     std::vector<std::string>::iterator begin,
                     std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
   poller.ReadJRKErrors();
 }
 
 void StopPolling(PololuJrkUSB::Poller& poller,
                     std::vector<std::string>::iterator begin,
                     std::vector<std::string>::iterator end) {
-  (void)begin; (void)end; // FIXME
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
   poller.StopPolling();
+  cancelled = true;
 }
 
 // Split a line into whitespace-delimited tokens, supporting simple quoting
@@ -122,15 +151,17 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     { .cmd = "target", .fxn = &ReadJRKTarget, .help = "send a read target request", },
     { .cmd = "input", .fxn = &ReadJRKInput, .help = "send a read input command", },
     { .cmd = "eflags", .fxn = &ReadJRKErrors, .help = "send a read error flags command", },
+    { .cmd = "settarget", .fxn = &SetJRKTarget, .help = "send set target command (arg: [0..4095])", },
     { .cmd = "", .fxn = nullptr, .help = "", },
   }, *c;
   char* line;
-  while(1){
+  while(!cancelled){
     line = readline(RL_START "\033[0;35m" RL_END
       "[" RL_START "\033[0;36m" RL_END
       "pololu" RL_START "\033[0;35m" RL_END
       "] " RL_START ANSI_WHITE RL_END);
     if(line == nullptr){
+      poller.StopPolling();
       break;
     }
     std::vector<std::string> tokes;
@@ -179,7 +210,8 @@ int main(int argc, const char** argv) {
   poller.ReadJRKTarget();
   std::thread usb(&PololuJrkUSB::Poller::Poll, std::ref(poller));
   ReadlineLoop(poller);
-  // FIXME join on poller
+  std::cout << "Joining USB poller thread..." << std::endl;
+  usb.join();
 
   return EXIT_SUCCESS;
 }
