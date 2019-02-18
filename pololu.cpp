@@ -57,6 +57,17 @@ void ReadJRKTarget(PololuJrkUSB::Poller& poller,
   poller.ReadJRKTarget();
 }
 
+void SetJRKTarget(PololuJrkUSB::Poller& poller,
+                    std::vector<std::string>::iterator begin,
+                    std::vector<std::string>::iterator end) {
+  if(begin == end || begin + 1 != end){
+    std::cerr << "command requires a single argument [0..4095]" << std::endl;
+    return;
+  }
+  auto target = std::stoi(*begin);
+  poller.SetJRKTarget(target);
+}
+
 void ReadJRKErrors(PololuJrkUSB::Poller& poller,
                     std::vector<std::string>::iterator begin,
                     std::vector<std::string>::iterator end) {
@@ -140,6 +151,7 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     { .cmd = "target", .fxn = &ReadJRKTarget, .help = "send a read target request", },
     { .cmd = "input", .fxn = &ReadJRKInput, .help = "send a read input command", },
     { .cmd = "eflags", .fxn = &ReadJRKErrors, .help = "send a read error flags command", },
+    { .cmd = "settarget", .fxn = &SetJRKTarget, .help = "send set target command (arg: [0..4095])", },
     { .cmd = "", .fxn = nullptr, .help = "", },
   }, *c;
   char* line;
@@ -149,6 +161,7 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
       "pololu" RL_START "\033[0;35m" RL_END
       "] " RL_START ANSI_WHITE RL_END);
     if(line == nullptr){
+      poller.StopPolling();
       break;
     }
     std::vector<std::string> tokes;
