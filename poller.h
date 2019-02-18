@@ -2,6 +2,7 @@
 #define POLOLUJRKUSB_POLLER
 
 #include <queue>
+#include <mutex>
 #include <atomic>
 #include <ostream>
 
@@ -27,6 +28,7 @@ private:
   int devfd;
   std::atomic<bool> cancelled;
   std::queue<unsigned char> sent_cmds;
+  std::mutex lock; // guards sent_cmds and devfd
 
   std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len);
   int OpenDev(const char* dev);

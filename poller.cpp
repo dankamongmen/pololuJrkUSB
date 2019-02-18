@@ -70,7 +70,7 @@ void Poller::WriteJRKCommand(int cmd, int fd) {
 }
 
 void Poller::SendJRKReadCommand(int cmd) {
-  // FIXME need to lock
+  std::lock_guard<std::mutex> guard(lock);
   WriteJRKCommand(cmd, devfd);
   sent_cmds.push(cmd);
 }
@@ -156,7 +156,6 @@ void Poller::HandleUSB() {
   }
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
-    throw std::runtime_error("erp");
     // FIXME throw exception?
   }
 }
@@ -176,7 +175,9 @@ void Poller::Poll() {
     for(auto i = 0u ; i < nfds ; ++i){
       if(pfds[i].revents){
         if(pfds[i].fd == devfd){
+          lock.lock();
           HandleUSB();
+          lock.unlock();
         }else{
           std::cout << "event on bogon fd " << pfds[i].fd << std::endl; // FIXME
         }
