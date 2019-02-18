@@ -2,16 +2,23 @@
 .PHONY: all bin clean
 .DEFAULT_GOAL:=all
 
-CFLAGS:=-W -Wall -Werror
+CFLAGS:=-W -Wall -Werror -pthread
+LFLAGS:=-lreadline
 
 BIN:=pololu
+SRC:=$(shell find -type f -iname \*.cpp -print)
+INC:=$(shell find -type f -iname \*.h -print)
+OBJ:=$(SRC:%.cpp=%.o)
 
 all: bin
 
 bin: $(BIN)
 
-$(BIN): $(BIN).cpp
-	$(CXX) $(CFLAGS) -o $@ $< $(LFLAGS)
+$(BIN): $(OBJ)
+	$(CXX) $(CFLAGS) -o $@ $^ $(LFLAGS)
+
+%.o: %.cpp $(INC)
+	$(CXX) -c $(CFLAGS) -o $@ $<
 
 clean:
-	rm -rf $(BIN)
+	rm -rf $(BIN) $(OBJ)
