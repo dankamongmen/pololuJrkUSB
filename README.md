@@ -23,16 +23,26 @@ supported by the cdc_acm Linux kernel module.
   * 6V–16V
   * 12A continous, 30A peak
 
+## Building
+
+Run `make`.
+
+### Dependencies
+
+* GNU Make
+* C++ compiler
+* libreadline
+
 ## Usage
 
 Launch the program with the USB serial device node as its argument for
 interactive keyboard-driven use. The help text will be printed in response to
-a keypress of 'h'. Other commands include:
+the 'help' command. Other commands include:
 
-* 'f': Read feedback
-* 'i': Read input
-* 't': Read target
-* 'e': Read error flags
+* 'feedback': Read feedback
+* 'input': Read input
+* 'target': Read target
+* 'eflags': Read error flags
 
 ## Copyright and thanks
 
