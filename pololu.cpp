@@ -238,6 +238,8 @@ int main(int argc, const char** argv) {
     std::cerr << "error initializing libusb" << std::endl; // FIXME details?
   }
   auto devlist = LibusbGetDevices(usbctx);
+  // FIXME find Jrks via libusb via get_descriptor(LIBUSB_DT_DEVICE)
+  // FIXME use libusb_hotplug_register_callback to find devices as plugged in
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
