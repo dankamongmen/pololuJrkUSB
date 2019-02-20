@@ -13,6 +13,8 @@
 #include <readline/readline.h>
 #include "poller.h"
 
+constexpr unsigned PololuVendorID = 0x1ffb;
+
 static void
 usage(std::ostream& os, int ret) {
   os << "usage: pololu dev\n";
@@ -214,16 +216,23 @@ LibusbVersion(std::ostream& s) {
   s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
 }
 
-static libusb_device **
-LibusbGetDevices(libusb_context* usbctx) {
-  libusb_device** devlist; // argv-style NULL-terminated list
-  auto count = libusb_get_device_list(usbctx, &devlist);
-  if(count < 0){
-    throw std::runtime_error(std::string("error enumerating usb devices: ") +
-                             libusb_strerror(static_cast<libusb_error>(count)));
+// Return 0 to rearm the callback, or 1 to disable it.
+static int
+libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event,
+                void *user_data __attribute__ ((unused))) {
+  (void)ctx; // FIXME
+  if(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED != event){
+    std::cerr << "unexpected libusb event " << event << std::endl; // FIXME throw?
+  }else{
+    struct libusb_device_descriptor desc;
+    auto ret = libusb_get_device_descriptor(dev, &desc);
+    if(ret){
+      throw std::runtime_error(std::string("error describing usb device: ") +
+                               libusb_strerror(static_cast<libusb_error>(ret)));
+    }
+    // std::cout << "vendor: " << desc.idVendor << std::endl; // FIXME
   }
-  // std::cout << "found " << count << " usb devices" << std::endl;
-  return devlist;
+  return 0;
 }
 
 // FIXME it looks like we can maybe get firmware version with 0x060100
@@ -237,9 +246,17 @@ int main(int argc, const char** argv) {
   if(libusb_init(&usbctx)){
     std::cerr << "error initializing libusb" << std::endl; // FIXME details?
   }
-  auto devlist = LibusbGetDevices(usbctx);
+  // FIXME should maybe limit the product IDs we handle?
+  auto ret = libusb_hotplug_register_callback(usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED,
+                                   LIBUSB_HOTPLUG_ENUMERATE, PololuVendorID,
+                                   LIBUSB_HOTPLUG_MATCH_ANY, // productID
+                                   LIBUSB_HOTPLUG_MATCH_ANY, // class
+                                   libusb_callback, nullptr, nullptr);
+  if(ret){
+    throw std::runtime_error(std::string("registering libusb callback: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
   // FIXME find Jrks via libusb via get_descriptor(LIBUSB_DT_DEVICE)
-  // FIXME use libusb_hotplug_register_callback to find devices as plugged in
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
@@ -252,7 +269,6 @@ int main(int argc, const char** argv) {
   std::cout << "Joining USB poller thread..." << std::endl;
   usb.join();
 
-  libusb_free_device_list(devlist, true);
   libusb_exit(usbctx);
 
   return EXIT_SUCCESS;
