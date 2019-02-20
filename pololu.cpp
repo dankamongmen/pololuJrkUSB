@@ -233,6 +233,23 @@ JrkGetFirmwareVersion(libusb_device_handle* dev) {
   std::cout << "firmware version: " << major << "." << minor << std::endl;
 }
 
+static void
+LibusbGetTopology(libusb_device* dev) {
+  const int USB_TOPOLOGY_MAXLEN = 7;
+  std::array<uint8_t, USB_TOPOLOGY_MAXLEN> numbers;
+  int bus = libusb_get_bus_number(dev);
+  auto ret = libusb_get_port_numbers(dev, numbers.data(), numbers.size());
+  if(ret <= 0){
+    throw std::runtime_error(std::string("error locating usb device: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
+  std::cout << "USB device at " << bus << "-";
+  for(auto n = 0 ; n < ret ; ++n){
+    std::cout << static_cast<int>(numbers[n]) << (n + 1 < ret ? "." : "");
+  }
+  std::cout << std::endl;
+}
+
 // Return 0 to rearm the callback, or 1 to disable it.
 static int
 libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event,
@@ -255,6 +272,7 @@ libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event ev
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
     JrkGetFirmwareVersion(handle);
+    LibusbGetTopology(dev);
     libusb_close(handle); // FIXME
   }
   return 0;
