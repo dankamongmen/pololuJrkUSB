@@ -5,6 +5,7 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
+#include <libusb.h>
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
@@ -207,11 +208,23 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
   }
 }
 
+static void
+DumpLibusbVersion(std::ostream& s) {
+  auto ver = libusb_get_version();
+  s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
+}
+
 // FIXME it looks like we can maybe get firmware version with 0x060100
 int main(int argc, const char** argv) {
   if(argc != 2){
     usage(std::cerr, EXIT_FAILURE);
   }
+
+  libusb_context* usbctx;
+  if(libusb_init(&usbctx)){
+    std::cerr << "error initializing libusb" << std::endl; // FIXME details?
+  }
+  DumpLibusbVersion(std::cout);
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
@@ -223,6 +236,8 @@ int main(int argc, const char** argv) {
   ReadlineLoop(poller);
   std::cout << "Joining USB poller thread..." << std::endl;
   usb.join();
+
+  libusb_exit(usbctx);
 
   return EXIT_SUCCESS;
 }
