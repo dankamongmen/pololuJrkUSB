@@ -5,12 +5,15 @@
 #include <vector>
 #include <cstring>
 #include <cstdlib>
+#include <libusb.h>
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include "poller.h"
+
+constexpr unsigned PololuVendorID = 0x1ffb;
 
 static void
 usage(std::ostream& os, int ret) {
@@ -207,11 +210,96 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
   }
 }
 
+static void
+LibusbVersion(std::ostream& s) {
+  auto ver = libusb_get_version();
+  s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
+}
+
+static void
+JrkGetFirmwareVersion(libusb_device_handle* dev) {
+  constexpr int FIRMWARE_RESPLEN = 14;
+  constexpr int FIRMWARE_OFFSET = 12;
+  std::array<unsigned char, FIRMWARE_RESPLEN> buffer;
+  auto ret = libusb_control_transfer(dev, 0x80, 6, 0x0100, 0x0000,
+                                     buffer.data(), buffer.size(), 0);
+  if(ret != buffer.size()){
+    throw std::runtime_error(std::string("error extracting firmware: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
+  auto minor = buffer[FIRMWARE_OFFSET] & 0xf;
+  auto major = ((buffer[FIRMWARE_OFFSET] >> 4) & 0xf) +
+    ((buffer[FIRMWARE_OFFSET + 1] >> 4) & 0xf) * 100;
+  std::cout << "firmware version: " << major << "." << minor << std::endl;
+}
+
+static void
+LibusbGetTopology(libusb_device* dev) {
+  const int USB_TOPOLOGY_MAXLEN = 7;
+  std::array<uint8_t, USB_TOPOLOGY_MAXLEN> numbers;
+  int bus = libusb_get_bus_number(dev);
+  auto ret = libusb_get_port_numbers(dev, numbers.data(), numbers.size());
+  if(ret <= 0){
+    throw std::runtime_error(std::string("error locating usb device: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
+  std::cout << "USB device at " << bus << "-";
+  for(auto n = 0 ; n < ret ; ++n){
+    std::cout << static_cast<int>(numbers[n]) << (n + 1 < ret ? "." : "");
+  }
+  std::cout << std::endl;
+}
+
+// Return 0 to rearm the callback, or 1 to disable it.
+static int
+libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event,
+                void *user_data __attribute__ ((unused))) {
+  (void)ctx; // FIXME
+  if(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED != event){
+    std::cerr << "unexpected libusb event " << event << std::endl; // FIXME throw?
+  }else{
+    struct libusb_device_descriptor desc;
+    auto ret = libusb_get_device_descriptor(dev, &desc);
+    if(ret){
+      throw std::runtime_error(std::string("error describing usb device: ") +
+                               libusb_strerror(static_cast<libusb_error>(ret)));
+    }else if(desc.idVendor != PololuVendorID){
+      std::cerr << "unexpected idVendor " << desc.idVendor << std::endl; // FIXME throw?
+    }
+    libusb_device_handle* handle;
+    if( (ret = libusb_open(dev, &handle)) ){
+      throw std::runtime_error(std::string("error opening usb device: ") +
+                               libusb_strerror(static_cast<libusb_error>(ret)));
+    }
+    JrkGetFirmwareVersion(handle);
+    LibusbGetTopology(dev);
+    libusb_close(handle); // FIXME
+  }
+  return 0;
+}
+
 // FIXME it looks like we can maybe get firmware version with 0x060100
 int main(int argc, const char** argv) {
   if(argc != 2){
     usage(std::cerr, EXIT_FAILURE);
   }
+
+  LibusbVersion(std::cout);
+  libusb_context* usbctx;
+  if(libusb_init(&usbctx)){
+    std::cerr << "error initializing libusb" << std::endl; // FIXME details?
+  }
+  // FIXME should maybe limit the product IDs we handle?
+  auto ret = libusb_hotplug_register_callback(usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED,
+                                   LIBUSB_HOTPLUG_ENUMERATE, PololuVendorID,
+                                   LIBUSB_HOTPLUG_MATCH_ANY, // productID
+                                   LIBUSB_HOTPLUG_MATCH_ANY, // class
+                                   libusb_callback, nullptr, nullptr);
+  if(ret){
+    throw std::runtime_error(std::string("registering libusb callback: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
+  // FIXME find Jrks via libusb via get_descriptor(LIBUSB_DT_DEVICE)
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
@@ -223,6 +311,8 @@ int main(int argc, const char** argv) {
   ReadlineLoop(poller);
   std::cout << "Joining USB poller thread..." << std::endl;
   usb.join();
+
+  libusb_exit(usbctx);
 
   return EXIT_SUCCESS;
 }
