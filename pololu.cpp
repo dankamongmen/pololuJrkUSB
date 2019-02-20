@@ -209,9 +209,21 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
 }
 
 static void
-DumpLibusbVersion(std::ostream& s) {
+LibusbVersion(std::ostream& s) {
   auto ver = libusb_get_version();
   s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
+}
+
+static libusb_device **
+LibusbGetDevices(libusb_context* usbctx) {
+  libusb_device** devlist; // argv-style NULL-terminated list
+  auto count = libusb_get_device_list(usbctx, &devlist);
+  if(count < 0){
+    throw std::runtime_error(std::string("error enumerating usb devices: ") +
+                             libusb_strerror(static_cast<libusb_error>(count)));
+  }
+  // std::cout << "found " << count << " usb devices" << std::endl;
+  return devlist;
 }
 
 // FIXME it looks like we can maybe get firmware version with 0x060100
@@ -220,11 +232,12 @@ int main(int argc, const char** argv) {
     usage(std::cerr, EXIT_FAILURE);
   }
 
+  LibusbVersion(std::cout);
   libusb_context* usbctx;
   if(libusb_init(&usbctx)){
     std::cerr << "error initializing libusb" << std::endl; // FIXME details?
   }
-  DumpLibusbVersion(std::cout);
+  auto devlist = LibusbGetDevices(usbctx);
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
@@ -237,6 +250,7 @@ int main(int argc, const char** argv) {
   std::cout << "Joining USB poller thread..." << std::endl;
   usb.join();
 
+  libusb_free_device_list(devlist, true);
   libusb_exit(usbctx);
 
   return EXIT_SUCCESS;
