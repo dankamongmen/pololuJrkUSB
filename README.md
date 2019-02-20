@@ -19,7 +19,7 @@ supported by the cdc_acm Linux kernel module.
   * 3A continuous, 5A peak
 * [jrk 12v12](https://www.pololu.com/product/1393)
   * Vendor: 0x1ffb
-  * Device: ????
+  * Device: 0x0085
   * 6V–16V
   * 12A continous, 30A peak
 
