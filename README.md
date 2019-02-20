@@ -31,7 +31,9 @@ Run `make`.
 
 * GNU Make
 * C++ compiler
+* pkg-config
 * libreadline
+* libusb-1.0
 
 ## Usage
 

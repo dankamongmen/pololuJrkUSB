@@ -2,8 +2,8 @@
 .PHONY: all bin clean
 .DEFAULT_GOAL:=all
 
-CFLAGS:=-W -Wall -Werror -pthread
-LFLAGS:=-lreadline
+CFLAGS:=-W -Wall -Werror -pthread $(shell pkg-config --cflags libusb-1.0)
+LFLAGS:=-lreadline $(shell pkg-config --libs libusb-1.0)
 
 BIN:=pololu
 SRC:=$(shell find -type f -iname \*.cpp -print)
