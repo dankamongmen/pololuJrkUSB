@@ -216,6 +216,23 @@ LibusbVersion(std::ostream& s) {
   s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
 }
 
+static void
+JrkGetFirmwareVersion(libusb_device_handle* dev) {
+  constexpr int FIRMWARE_RESPLEN = 14;
+  constexpr int FIRMWARE_OFFSET = 12;
+  std::array<unsigned char, FIRMWARE_RESPLEN> buffer;
+  auto ret = libusb_control_transfer(dev, 0x80, 6, 0x0100, 0x0000,
+                                     buffer.data(), buffer.size(), 0);
+  if(ret != buffer.size()){
+    throw std::runtime_error(std::string("error extracting firmware: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+  }
+  auto minor = buffer[FIRMWARE_OFFSET] & 0xf;
+  auto major = ((buffer[FIRMWARE_OFFSET] >> 4) & 0xf) +
+    ((buffer[FIRMWARE_OFFSET + 1] >> 4) & 0xf) * 100;
+  std::cout << "firmware version: " << major << "." << minor << std::endl;
+}
+
 // Return 0 to rearm the callback, or 1 to disable it.
 static int
 libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event,
@@ -229,8 +246,16 @@ libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event ev
     if(ret){
       throw std::runtime_error(std::string("error describing usb device: ") +
                                libusb_strerror(static_cast<libusb_error>(ret)));
+    }else if(desc.idVendor != PololuVendorID){
+      std::cerr << "unexpected idVendor " << desc.idVendor << std::endl; // FIXME throw?
     }
-    // std::cout << "vendor: " << desc.idVendor << std::endl; // FIXME
+    libusb_device_handle* handle;
+    if( (ret = libusb_open(dev, &handle)) ){
+      throw std::runtime_error(std::string("error opening usb device: ") +
+                               libusb_strerror(static_cast<libusb_error>(ret)));
+    }
+    JrkGetFirmwareVersion(handle);
+    libusb_close(handle); // FIXME
   }
   return 0;
 }
