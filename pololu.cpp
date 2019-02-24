@@ -30,7 +30,8 @@ public:
     std::runtime_error(what) {}
 };
 
-void ReadJRKInput(PololuJrkUSB::Poller& poller,
+// FIXME rewrite all these with a function object
+static void ReadJRKInput(PololuJrkUSB::Poller& poller,
                   std::vector<std::string>::iterator begin,
                   std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -40,7 +41,7 @@ void ReadJRKInput(PololuJrkUSB::Poller& poller,
   poller.ReadJRKInput();
 }
 
-void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
+static void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
                      std::vector<std::string>::iterator begin,
                      std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -50,7 +51,7 @@ void ReadJRKFeedback(PololuJrkUSB::Poller& poller,
   poller.ReadJRKFeedback();
 }
 
-void ReadJRKTarget(PololuJrkUSB::Poller& poller,
+static void ReadJRKTarget(PololuJrkUSB::Poller& poller,
                    std::vector<std::string>::iterator begin,
                    std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -60,7 +61,47 @@ void ReadJRKTarget(PololuJrkUSB::Poller& poller,
   poller.ReadJRKTarget();
 }
 
-void SetJRKTarget(PololuJrkUSB::Poller& poller,
+static void ReadJRKScaledFeedback(PololuJrkUSB::Poller& poller,
+                  std::vector<std::string>::iterator begin,
+                  std::vector<std::string>::iterator end) {
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
+  poller.ReadJRKScaledFeedback();
+}
+
+static void ReadJRKErrorSum(PololuJrkUSB::Poller& poller,
+                     std::vector<std::string>::iterator begin,
+                     std::vector<std::string>::iterator end) {
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
+  poller.ReadJRKErrorSum();
+}
+
+static void ReadJRKDutyCycleTarget(PololuJrkUSB::Poller& poller,
+                   std::vector<std::string>::iterator begin,
+                   std::vector<std::string>::iterator end) {
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
+  poller.ReadJRKDutyCycleTarget();
+}
+
+static void ReadJRKDutyCycle(PololuJrkUSB::Poller& poller,
+                   std::vector<std::string>::iterator begin,
+                   std::vector<std::string>::iterator end) {
+  if(begin != end){
+    std::cerr << "command does not accept options" << std::endl;
+    return;
+  }
+  poller.ReadJRKDutyCycle();
+}
+
+static void SetJRKTarget(PololuJrkUSB::Poller& poller,
                   std::vector<std::string>::iterator begin,
                   std::vector<std::string>::iterator end) {
   if(begin == end || begin + 1 != end){
@@ -71,7 +112,7 @@ void SetJRKTarget(PololuJrkUSB::Poller& poller,
   poller.SetJRKTarget(target);
 }
 
-void ReadJRKErrors(PololuJrkUSB::Poller& poller,
+static void ReadJRKErrors(PololuJrkUSB::Poller& poller,
                    std::vector<std::string>::iterator begin,
                    std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -81,7 +122,7 @@ void ReadJRKErrors(PololuJrkUSB::Poller& poller,
   poller.ReadJRKErrors();
 }
 
-void SetJRKOff(PololuJrkUSB::Poller& poller,
+static void SetJRKOff(PololuJrkUSB::Poller& poller,
                std::vector<std::string>::iterator begin,
                std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -91,7 +132,7 @@ void SetJRKOff(PololuJrkUSB::Poller& poller,
   poller.SetJRKOff();
 }
 
-void StopPolling(PololuJrkUSB::Poller& poller,
+static void StopPolling(PololuJrkUSB::Poller& poller,
                  std::vector<std::string>::iterator begin,
                  std::vector<std::string>::iterator end) {
   if(begin != end){
@@ -163,6 +204,10 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     { .cmd = "feedback", .fxn = &ReadJRKFeedback, .help = "send a read feedback request", },
     { .cmd = "target", .fxn = &ReadJRKTarget, .help = "send a read target request", },
     { .cmd = "input", .fxn = &ReadJRKInput, .help = "send a read input command", },
+    { .cmd = "sfeedback", .fxn = &ReadJRKScaledFeedback, .help = "send a read scaled feedback request", },
+    { .cmd = "errorsum", .fxn = &ReadJRKErrorSum, .help = "send a read error sum request", },
+    { .cmd = "cycletarg", .fxn = &ReadJRKDutyCycleTarget, .help = "send a read duty cycle target command", },
+    { .cmd = "cycle", .fxn = &ReadJRKDutyCycle, .help = "send a read duty cycle command", },
     { .cmd = "eflags", .fxn = &ReadJRKErrors, .help = "send a read error flags command", },
     { .cmd = "settarget", .fxn = &SetJRKTarget, .help = "send set target command (arg: [0..4095])", },
     { .cmd = "off", .fxn = &SetJRKOff, .help = "send a motor off command", },
@@ -216,12 +261,34 @@ LibusbVersion(std::ostream& s) {
   s << "libusb version " << ver->major << "." << ver->minor << "." << ver->micro << std::endl;
 }
 
+// Used bmRequestTypes. Device-to-Host (MSB) is always set.
+constexpr uint8_t BMREQ_STANDARD = 0x80; // firmware version
+constexpr uint8_t BMREQ_VENDOR = 0xc0; // config and variables
+
+// USB control transfers sent to JRK_RECIPIENT_CONFIG
+constexpr unsigned char JRKUSB_GET_PARAMETER = 0x81;
+constexpr unsigned char JRKUSB_GET_VARIABLES = 0x83;
+
+static void
+JrkGetSerialNumber(libusb_device_handle* dev, const libusb_device_descriptor* desc) {
+  if(desc->iSerialNumber){
+    std::array<unsigned char, 256> serialbuf;
+    auto ret = libusb_get_string_descriptor_ascii(dev, desc->iSerialNumber,
+                  serialbuf.data(), serialbuf.size());
+    if(ret <= 0){
+      throw std::runtime_error(std::string("error extracting serialno: ") +
+                             libusb_strerror(static_cast<libusb_error>(ret)));
+    }
+    std::cout << " Serial number: " << serialbuf.data() << std::endl;
+  }
+}
+
 static void
 JrkGetFirmwareVersion(libusb_device_handle* dev) {
   constexpr int FIRMWARE_RESPLEN = 14;
   constexpr int FIRMWARE_OFFSET = 12;
   std::array<unsigned char, FIRMWARE_RESPLEN> buffer;
-  auto ret = libusb_control_transfer(dev, 0x80, 6, 0x0100, 0x0000,
+  auto ret = libusb_control_transfer(dev, BMREQ_STANDARD, 6, 0x0100, 0,
                                      buffer.data(), buffer.size(), 0);
   if(ret != buffer.size()){
     throw std::runtime_error(std::string("error extracting firmware: ") +
@@ -230,7 +297,7 @@ JrkGetFirmwareVersion(libusb_device_handle* dev) {
   auto minor = buffer[FIRMWARE_OFFSET] & 0xf;
   auto major = ((buffer[FIRMWARE_OFFSET] >> 4) & 0xf) +
     ((buffer[FIRMWARE_OFFSET + 1] >> 4) & 0xf) * 100;
-  std::cout << "firmware version: " << major << "." << minor << std::endl;
+  std::cout << " Firmware version: " << major << "." << minor << std::endl;
 }
 
 static void
@@ -248,6 +315,113 @@ LibusbGetTopology(libusb_device* dev) {
     std::cout << static_cast<int>(numbers[n]) << (n + 1 < ret ? "." : "");
   }
   std::cout << std::endl;
+}
+
+// Taken from https://github.com/pololu/pololu-usb-sdk.git/Jrk/Jrk/Jrk_protocol.cs
+enum class JrkConfigParam {
+  PARAMETER_INITIALIZED = 0, // 1 bit boolean value
+  PARAMETER_INPUT_MODE = 1, // 1 byte unsigned value.  Valid values are INPUT_MODE_*.  Init parameter.
+  PARAMETER_INPUT_MINIMUM = 2, // 2 byte unsigned value (0-4095)
+  PARAMETER_INPUT_MAXIMUM = 6, // 2 byte unsigned value (0-4095)
+  PARAMETER_OUTPUT_MINIMUM = 8, // 2 byte unsigned value (0-4095)
+  PARAMETER_OUTPUT_NEUTRAL = 10, // 2 byte unsigned value (0-4095)
+  PARAMETER_OUTPUT_MAXIMUM = 12, // 2 byte unsigned value (0-4095)
+  PARAMETER_INPUT_INVERT = 16, // 1 bit boolean value
+  PARAMETER_INPUT_SCALING_DEGREE = 17, // 1 bit boolean value
+  PARAMETER_INPUT_POWER_WITH_AUX = 18, // 1 bit boolean value
+  PARAMETER_INPUT_ANALOG_SAMPLES_EXPONENT = 20, // 1 byte unsigned value, 0-8 - averages together 4 * 2^x samples
+  PARAMETER_INPUT_DISCONNECT_MINIMUM = 22, // 2 byte unsigned value (0-4095)
+  PARAMETER_INPUT_DISCONNECT_MAXIMUM = 24, // 2 byte unsigned value (0-4095)
+  PARAMETER_INPUT_NEUTRAL_MAXIMUM = 26, // 2 byte unsigned value (0-4095)
+  PARAMETER_INPUT_NEUTRAL_MINIMUM = 28, // 2 byte unsigned value (0-4095)
+
+  PARAMETER_SERIAL_MODE = 30, // 1 byte unsigned value.  Valid values are SERIAL_MODE_*.  MUST be SERIAL_MODE_USB_DUAL_PORT if INPUT_MODE!=INPUT_MODE_SERIAL.  Init variable.
+  PARAMETER_SERIAL_FIXED_BAUD_RATE = 31, // 2-byte unsigned value; 0 means autodetect.  Init parameter.
+  PARAMETER_SERIAL_TIMEOUT = 34, // 2-byte unsigned value
+  PARAMETER_SERIAL_ENABLE_CRC = 36, // 1 bit boolean value
+  PARAMETER_SERIAL_NEVER_SUSPEND = 37, // 1 bit boolean value
+  PARAMETER_SERIAL_DEVICE_NUMBER = 38, // 1 byte unsigned value, 0-127
+
+  PARAMETER_FEEDBACK_MODE = 50, // 1 byte unsigned value.  Valid values are FEEDBACK_MODE_*.  Init parameter.
+  PARAMETER_FEEDBACK_MINIMUM = 51, // 2 byte unsigned value
+  PARAMETER_FEEDBACK_MAXIMUM = 53, // 2 byte unsigned value
+  PARAMETER_FEEDBACK_INVERT = 55, // 1 bit boolean value
+  PARAMETER_FEEDBACK_POWER_WITH_AUX = 57, // 1 bit boolean value
+  PARAMETER_FEEDBACK_DEAD_ZONE = 58, // 1 byte unsigned value
+  PARAMETER_FEEDBACK_ANALOG_SAMPLES_EXPONENT = 59, // 1 byte unsigned value, 0-8 - averages together 4 * 2^x samples
+  PARAMETER_FEEDBACK_DISCONNECT_MINIMUM = 61, // 2 byte unsigned value (0-4095)
+  PARAMETER_FEEDBACK_DISCONNECT_MAXIMUM = 63, // 2 byte unsigned value (0-4095)
+
+  PARAMETER_PROPORTIONAL_MULTIPLIER = 70, // 2 byte unsigned value (0-1023)
+  PARAMETER_PROPORTIONAL_EXPONENT = 72, // 1 byte unsigned value (0-15)
+  PARAMETER_INTEGRAL_MULTIPLIER = 73, // 2 byte unsigned value (0-1023)
+  PARAMETER_INTEGRAL_EXPONENT = 75, // 1 byte unsigned value (0-15)
+  PARAMETER_DERIVATIVE_MULTIPLIER = 76, // 2 byte unsigned value (0-1023)
+  PARAMETER_DERIVATIVE_EXPONENT = 78, // 1 byte unsigned value (0-15)
+  PARAMETER_PID_PERIOD = 79, // 2 byte unsigned value
+  PARAMETER_PID_INTEGRAL_LIMIT = 81, // 2 byte unsigned value
+  PARAMETER_PID_RESET_INTEGRAL = 84, // 1 bit boolean value
+
+  PARAMETER_MOTOR_PWM_FREQUENCY = 100, // 1 byte unsigned value.  Valid values are MOTOR_PWM_FREQUENCY.  Init parameter.
+  PARAMETER_MOTOR_INVERT = 101, // 1 bit boolean value
+
+  // WARNING: The EEPROM initialization assumes the 5 parameters below are consecutive!
+  PARAMETER_MOTOR_MAX_DUTY_CYCLE_WHILE_FEEDBACK_OUT_OF_RANGE = 102, // 2 byte unsigned value (0-600)
+  PARAMETER_MOTOR_MAX_ACCELERATION_FORWARD = 104, // 2 byte unsigned value (1-600)
+  PARAMETER_MOTOR_MAX_ACCELERATION_REVERSE = 106, // 2 byte unsigned value (1-600)
+  PARAMETER_MOTOR_MAX_DUTY_CYCLE_FORWARD = 108, // 2 byte unsigned value (0-600)
+  PARAMETER_MOTOR_MAX_DUTY_CYCLE_REVERSE = 110, // 2 byte unsigned value (0-600)
+  // WARNING: The EEPROM initialization assumes the 5 parameters above are consecutive!
+
+  // WARNING: The EEPROM initialization assumes the 2 parameters below are consecutive!
+  PARAMETER_MOTOR_MAX_CURRENT_FORWARD = 112, // 1 byte unsigned value (units of current_calibration_forward)
+  PARAMETER_MOTOR_MAX_CURRENT_REVERSE = 113, // 1 byte unsigned value (units of current_calibration_reverse)
+  // WARNING: The EEPROM initialization assumes the 2 parameters above are consecutive!
+
+  // WARNING: The EEPROM initialization assumes the 2 parameters below are consecutive!
+  PARAMETER_MOTOR_CURRENT_CALIBRATION_FORWARD = 114, // 1 byte unsigned value (units of mA)
+  PARAMETER_MOTOR_CURRENT_CALIBRATION_REVERSE = 115, // 1 byte unsigned value (units of mA)
+  // WARNING: The EEPROM initialization assumes the 2 parameters above are consecutive!
+
+  PARAMETER_MOTOR_BRAKE_DURATION_FORWARD = 116, // 1 byte unsigned value (units of 5 ms)
+  PARAMETER_MOTOR_BRAKE_DURATION_REVERSE = 117, // 1 byte unsigned value (units of 5 ms)
+  PARAMETER_MOTOR_COAST_WHEN_OFF = 118, // 1 bit boolean value (coast=1, brake=0)
+
+  PARAMETER_ERROR_ENABLE = 130, // 2 byte unsigned value.  See below for the meanings of the bits.
+  PARAMETER_ERROR_LATCH = 132, // 2 byte unsigned value.  See below for the meanings of the bits.
+};
+
+static struct {
+  const char* name;
+  JrkConfigParam id;
+  int bytes; // how many bytes for value
+} JrkParams[] = {
+  // We want 0 here, oddly enough
+  { .name = "Initialized", .id = JrkConfigParam::PARAMETER_INITIALIZED, .bytes = 1, } ,
+  // We want 0, INPUT_MODE_SERIAL
+  { .name = "Input mode", .id = JrkConfigParam::PARAMETER_INPUT_MODE, .bytes = 1, } ,
+  // We want 0, SERIAL_MODE_USB_DUAL_PORT
+  { .name = "Serial mode", .id = JrkConfigParam::PARAMETER_SERIAL_MODE, .bytes = 1, } ,
+  // 0 is autodetect, otherwise fixed baud rate
+  { .name = "Serial baud", .id = JrkConfigParam::PARAMETER_SERIAL_FIXED_BAUD_RATE, .bytes = 2, } ,
+  // 0 means CRC7 is not expected, 1 means it is
+  { .name = "CRC7", .id = JrkConfigParam::PARAMETER_SERIAL_ENABLE_CRC, .bytes = 1, } ,
+};
+
+static void
+LibusbGetConfig(libusb_device_handle* dev) {
+  unsigned char data[2]; // maximum number of bytes used for any value
+  for(auto& param : JrkParams){
+    // FIXME maybe want timeouts on control transfer?
+    int ret = libusb_control_transfer(dev, BMREQ_VENDOR, JRKUSB_GET_PARAMETER, 0,
+                        static_cast<uint8_t>(param.id), data, param.bytes, 0);
+    if(ret <= 0){
+      throw std::runtime_error(std::string("error reading from usb device: ") +
+                               libusb_strerror(static_cast<libusb_error>(ret)));
+    }
+    std::cout << " " << param.name << ": 0x";
+    PololuJrkUSB::Poller::HexOutput(std::cout, data, param.bytes) << std::endl;
+  }
 }
 
 // Return 0 to rearm the callback, or 1 to disable it.
@@ -271,8 +445,10 @@ libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event ev
       throw std::runtime_error(std::string("error opening usb device: ") +
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
-    JrkGetFirmwareVersion(handle);
     LibusbGetTopology(dev);
+    JrkGetSerialNumber(handle, &desc);
+    JrkGetFirmwareVersion(handle);
+    LibusbGetConfig(handle);
     libusb_close(handle); // FIXME
   }
   return 0;

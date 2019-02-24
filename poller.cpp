@@ -15,9 +15,15 @@
 
 namespace PololuJrkUSB {
 
+// Serial commands using the "compact protocol" (i.e. non daisy-chained)
 constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
 constexpr unsigned char JRKCMD_READ_TARGET = 0xa3;
 constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa5;
+constexpr unsigned char JRKCMD_READ_SCALED_FEEDBACK = 0xa7;
+constexpr unsigned char JRKCMD_READ_ERRORSUM = 0xa9;
+constexpr unsigned char JRKCMD_READ_DUTY_TARGET = 0xab;
+constexpr unsigned char JRKCMD_READ_DUTY = 0xad;
+constexpr unsigned char JRKCMD_READ_PIDCOUNT = 0xb1;
 constexpr unsigned char JRKCMD_READ_ERRORS = 0xb5;
 constexpr unsigned char JRKCMD_MOTOR_OFF = 0xff;
 
@@ -85,8 +91,28 @@ void Poller::ReadJRKFeedback() {
   SendJRKReadCommand(cmd);
 }
 
+void Poller::ReadJRKScaledFeedback() {
+  constexpr auto cmd = JRKCMD_READ_SCALED_FEEDBACK;
+  SendJRKReadCommand(cmd);
+}
+
 void Poller::ReadJRKTarget() {
   constexpr auto cmd = JRKCMD_READ_TARGET;
+  SendJRKReadCommand(cmd);
+}
+
+void Poller::ReadJRKErrorSum() {
+  constexpr auto cmd = JRKCMD_READ_ERRORSUM;
+  SendJRKReadCommand(cmd);
+}
+
+void Poller::ReadJRKDutyCycleTarget() {
+  constexpr auto cmd = JRKCMD_READ_DUTY_TARGET;
+  SendJRKReadCommand(cmd);
+}
+
+void Poller::ReadJRKDutyCycle() {
+  constexpr auto cmd = JRKCMD_READ_DUTY;
   SendJRKReadCommand(cmd);
 }
 
@@ -115,7 +141,7 @@ void Poller::SetJRKTarget(int target) {
 void Poller::SetJRKOff() {
   std::lock_guard<std::mutex> guard(lock);
   constexpr auto cmd = JRKCMD_MOTOR_OFF;
-  WriteJRKCommand(cmd, devfd);
+  WriteJRKCommand(cmd, devfd); // no reply, so don't use SendJRKReadCommand
 }
 
 std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
@@ -129,6 +155,13 @@ std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size
   return s;
 }
 
+int Poller::USBToSigned16(uint16_t unsig) {
+  int16_t sig;
+  static_assert(sizeof(unsig) == sizeof(sig));
+  memcpy(&sig, &unsig, sizeof(sig));
+  return sig;
+}
+
 void Poller::HandleUSB() {
   constexpr auto bufsize = 2;
   unsigned char valbuf[bufsize];
@@ -136,9 +169,9 @@ void Poller::HandleUSB() {
 
   // FIXME save readline state
   while((read(devfd, valbuf, bufsize)) == bufsize){
-    int sword = valbuf[1] * 256 + valbuf[0];
-    std::cout << "received bytes: 0x";
-    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << sword << ")" << std::endl;
+    unsigned uword = valbuf[1] * 256 + valbuf[0];
+    /* std::cout << "received bytes: 0x";
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << uword << ")" << std::endl; */
     if(sent_cmds.empty()){
       std::cerr << "warning: no outstanding command for recv" << std::endl;
       continue;
@@ -146,24 +179,29 @@ void Poller::HandleUSB() {
     unsigned char expcmd = sent_cmds.front();
     sent_cmds.pop();
     switch(expcmd){
-      case JRKCMD_READ_INPUT: std::cout << "Input is " << sword << std::endl; break;
-      case JRKCMD_READ_FEEDBACK: std::cout << "Feedback is " << sword << std::endl; break;
-      case JRKCMD_READ_TARGET: std::cout << "Target is " << sword << std::endl; break;
+      case JRKCMD_READ_INPUT: std::cout << "Input is " << uword << std::endl; break;
+      case JRKCMD_READ_TARGET: std::cout << "Target is " << uword << std::endl; break;
+      case JRKCMD_READ_FEEDBACK: std::cout << "Feedback is " << uword << std::endl; break;
+      case JRKCMD_READ_SCALED_FEEDBACK: std::cout << "Scaled feedback is " << uword << std::endl; break;
+      case JRKCMD_READ_ERRORSUM: std::cout << "Error sum (integral) is " << USBToSigned16(uword) << std::endl; break;
+      case JRKCMD_READ_DUTY_TARGET: std::cout << "Duty cycle target is " << USBToSigned16(uword) << std::endl; break;
+      case JRKCMD_READ_DUTY: std::cout << "Duty cycle is " << USBToSigned16(uword) << std::endl; break;
       case JRKCMD_READ_ERRORS:
         std::cout << "Error bits: " <<
-          ((sword & 0x0001) ? "AwaitingCmd" : "") <<
-          ((sword & 0x0002) ? "NoPower" : "") <<
-          ((sword & 0x0004) ? "DriveError" : "") <<
-          ((sword & 0x0008) ? "InvalidInput" : "") <<
-          ((sword & 0x0010) ? "InputDisconn" : "") <<
-          ((sword & 0x0020) ? "FdbckDisconn" : "") <<
-          ((sword & 0x0040) ? "AmpsExceeded" : "") <<
-          ((sword & 0x0080) ? "SerialSig" : "") <<
-          ((sword & 0x0100) ? "UARTOflow" : "") <<
-          ((sword & 0x0200) ? "SerialOflow" : "") <<
-          ((sword & 0x0400) ? "SerialCRC" : "") <<
-          ((sword & 0x0800) ? "SerialProto" : "") <<
-          ((sword & 0x1000) ? "TimeoutRX" : "") <<
+          ((uword & 0x0001) ? "AwaitingCmd" : "") <<
+          ((uword & 0x0002) ? "NoPower" : "") <<
+          ((uword & 0x0004) ? "DriveError" : "") <<
+          ((uword & 0x0008) ? "InvalidInput" : "") <<
+          ((uword & 0x0010) ? "InputDisconn" : "") <<
+          ((uword & 0x0020) ? "FdbckDisconn" : "") <<
+          ((uword & 0x0040) ? "AmpsExceeded" : "") <<
+          ((uword & 0x0080) ? "SerialSig" : "") <<
+          ((uword & 0x0100) ? "UARTOflow" : "") <<
+          ((uword & 0x0200) ? "SerialOflow" : "") <<
+          ((uword & 0x0400) ? "SerialCRC" : "") <<
+          ((uword & 0x0800) ? "SerialProto" : "") <<
+          ((uword & 0x1000) ? "TimeoutRX" : "") <<
+          ((uword == 0) ? "None" : "") <<
           std::endl;
         break;
       default:
