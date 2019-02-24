@@ -9,11 +9,10 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include "poller.h"
-
-constexpr unsigned PololuVendorID = 0x1ffb;
 
 static void
 usage(std::ostream& os, int ret) {
@@ -409,7 +408,7 @@ static struct {
 };
 
 static void
-LibusbGetConfig(libusb_device_handle* dev) {
+LibusbGetConfig(std::ostream& s, libusb_device_handle* dev) {
   unsigned char data[2]; // maximum number of bytes used for any value
   for(auto& param : JrkParams){
     // FIXME maybe want timeouts on control transfer?
@@ -419,37 +418,52 @@ LibusbGetConfig(libusb_device_handle* dev) {
       throw std::runtime_error(std::string("error reading from usb device: ") +
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
-    std::cout << " " << param.name << ": 0x";
-    PololuJrkUSB::Poller::HexOutput(std::cout, data, param.bytes) << std::endl;
+    s << " " << param.name << ": 0x";
+    PololuJrkUSB::Poller::HexOutput(s, data, param.bytes) << std::endl;
   }
+}
+
+static void
+LibusbGetDesc(std::ostream& s, const libusb_device_descriptor* desc) {
+  s << "VendorID: ";
+  uint16_t id = ntohs(desc->idVendor);
+  PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id)) << " ProductID: ";
+  id = ntohs(desc->idProduct);
+  PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id)) << std::endl;
 }
 
 // Return 0 to rearm the callback, or 1 to disable it.
 static int
-libusb_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event,
-                void *user_data __attribute__ ((unused))) {
-  (void)ctx; // FIXME
+libusb_callback(libusb_context *ctx, libusb_device *dev,
+                libusb_hotplug_event event, void *user_data) {
+  (void)ctx; (void)user_data;
   if(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED != event){
-    std::cerr << "unexpected libusb event " << event << std::endl; // FIXME throw?
+    std::cerr << "unexpected libusb event " << event << std::endl;
   }else{
     struct libusb_device_descriptor desc;
     auto ret = libusb_get_device_descriptor(dev, &desc);
     if(ret){
       throw std::runtime_error(std::string("error describing usb device: ") +
                                libusb_strerror(static_cast<libusb_error>(ret)));
-    }else if(desc.idVendor != PololuVendorID){
-      std::cerr << "unexpected idVendor " << desc.idVendor << std::endl; // FIXME throw?
     }
-    libusb_device_handle* handle;
-    if( (ret = libusb_open(dev, &handle)) ){
-      throw std::runtime_error(std::string("error opening usb device: ") +
-                               libusb_strerror(static_cast<libusb_error>(ret)));
+    if(desc.idVendor != PololuJrkUSB::PololuVendorID){
+      std::cerr << "unexpected idVendor " << desc.idVendor << std::endl;
+    }else if(desc.idProduct != PololuJrkUSB::Jrk21v3ProductID &&
+             desc.idProduct != PololuJrkUSB::Jrk12v12ProductID){
+      std::cerr << "unexpected idProduct " << desc.idProduct << std::endl;
+    }else{
+      libusb_device_handle* handle;
+      if( (ret = libusb_open(dev, &handle)) ){
+        throw std::runtime_error(std::string("error opening usb device: ") +
+                                libusb_strerror(static_cast<libusb_error>(ret)));
+      }
+      LibusbGetTopology(dev);
+      LibusbGetDesc(std::cout, &desc);
+      JrkGetSerialNumber(handle, &desc);
+      JrkGetFirmwareVersion(handle);
+      LibusbGetConfig(std::cout, handle);
+      libusb_close(handle); // FIXME
     }
-    LibusbGetTopology(dev);
-    JrkGetSerialNumber(handle, &desc);
-    JrkGetFirmwareVersion(handle);
-    LibusbGetConfig(handle);
-    libusb_close(handle); // FIXME
   }
   return 0;
 }
@@ -464,18 +478,23 @@ int main(int argc, const char** argv) {
   libusb_context* usbctx;
   if(libusb_init(&usbctx)){
     std::cerr << "error initializing libusb" << std::endl; // FIXME details?
+    return EXIT_FAILURE;
   }
-  // FIXME should maybe limit the product IDs we handle?
-  auto ret = libusb_hotplug_register_callback(usbctx, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED,
-                                   LIBUSB_HOTPLUG_ENUMERATE, PololuVendorID,
+  // Register a callback for any Pololu device that is already registered, or
+  // happens to show up (FIXME handle departures). We filter by productID
+  // within the callback proper
+  libusb_hotplug_callback_handle cbhandle;
+  auto ret = libusb_hotplug_register_callback(usbctx,
+                                   LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED,
+                                   LIBUSB_HOTPLUG_ENUMERATE,
+                                   PololuJrkUSB::PololuVendorID,
                                    LIBUSB_HOTPLUG_MATCH_ANY, // productID
                                    LIBUSB_HOTPLUG_MATCH_ANY, // class
-                                   libusb_callback, nullptr, nullptr);
+                                   libusb_callback, nullptr, &cbhandle);
   if(ret){
     throw std::runtime_error(std::string("registering libusb callback: ") +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
-  // FIXME find Jrks via libusb via get_descriptor(LIBUSB_DT_DEVICE)
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
@@ -488,6 +507,7 @@ int main(int argc, const char** argv) {
   std::cout << "Joining USB poller thread..." << std::endl;
   usb.join();
 
+  libusb_hotplug_deregister_callback(usbctx, cbhandle);
   libusb_exit(usbctx);
 
   return EXIT_SUCCESS;
