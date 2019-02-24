@@ -141,7 +141,7 @@ void Poller::SetJRKTarget(int target) {
 void Poller::SetJRKOff() {
   std::lock_guard<std::mutex> guard(lock);
   constexpr auto cmd = JRKCMD_MOTOR_OFF;
-  WriteJRKCommand(cmd, devfd);
+  WriteJRKCommand(cmd, devfd); // no reply, so don't use SendJRKReadCommand
 }
 
 std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
