@@ -279,7 +279,7 @@ JrkGetSerialNumber(libusb_device_handle* dev, const libusb_device_descriptor* de
       throw std::runtime_error(std::string("error extracting serialno: ") +
                              libusb_strerror(static_cast<libusb_error>(ret)));
     }
-    std::cout << "Serial number: " << serialbuf.data() << std::endl;
+    std::cout << " Serial number: " << serialbuf.data() << std::endl;
   }
 }
 
@@ -297,7 +297,7 @@ JrkGetFirmwareVersion(libusb_device_handle* dev) {
   auto minor = buffer[FIRMWARE_OFFSET] & 0xf;
   auto major = ((buffer[FIRMWARE_OFFSET] >> 4) & 0xf) +
     ((buffer[FIRMWARE_OFFSET + 1] >> 4) & 0xf) * 100;
-  std::cout << "firmware version: " << major << "." << minor << std::endl;
+  std::cout << " Firmware version: " << major << "." << minor << std::endl;
 }
 
 static void
@@ -392,10 +392,20 @@ enum class JrkConfigParam {
 };
 
 static struct {
+  const char* name;
   JrkConfigParam id;
   int bytes; // how many bytes for value
 } JrkParams[] = {
-  { .id = JrkConfigParam::PARAMETER_SERIAL_ENABLE_CRC, .bytes = 1, } ,
+  // We want 0 here, oddly enough
+  { .name = "Initialized", .id = JrkConfigParam::PARAMETER_INITIALIZED, .bytes = 1, } ,
+  // We want 0, INPUT_MODE_SERIAL
+  { .name = "Input mode", .id = JrkConfigParam::PARAMETER_INPUT_MODE, .bytes = 1, } ,
+  // We want 0, SERIAL_MODE_USB_DUAL_PORT
+  { .name = "Serial mode", .id = JrkConfigParam::PARAMETER_SERIAL_MODE, .bytes = 1, } ,
+  // 0 is autodetect, otherwise fixed baud rate
+  { .name = "Serial baud", .id = JrkConfigParam::PARAMETER_SERIAL_FIXED_BAUD_RATE, .bytes = 2, } ,
+  // 0 means CRC7 is not expected, 1 means it is
+  { .name = "CRC7", .id = JrkConfigParam::PARAMETER_SERIAL_ENABLE_CRC, .bytes = 1, } ,
 };
 
 static void
@@ -409,6 +419,8 @@ LibusbGetConfig(libusb_device_handle* dev) {
       throw std::runtime_error(std::string("error reading from usb device: ") +
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
+    std::cout << " " << param.name << ": 0x";
+    PololuJrkUSB::Poller::HexOutput(std::cout, data, param.bytes) << std::endl;
   }
 }
 

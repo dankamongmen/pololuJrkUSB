@@ -170,8 +170,8 @@ void Poller::HandleUSB() {
   // FIXME save readline state
   while((read(devfd, valbuf, bufsize)) == bufsize){
     unsigned uword = valbuf[1] * 256 + valbuf[0];
-    std::cout << "received bytes: 0x";
-    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << uword << ")" << std::endl;
+    /* std::cout << "received bytes: 0x";
+    HexOutput(std::cout, valbuf, sizeof(valbuf)) << " (" << uword << ")" << std::endl; */
     if(sent_cmds.empty()){
       std::cerr << "warning: no outstanding command for recv" << std::endl;
       continue;

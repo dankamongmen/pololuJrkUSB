@@ -24,6 +24,7 @@ public:
   void SetJRKTarget(int target);
   void SetJRKOff();
   void StopPolling();
+  static std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len);
 
 private:
   int devfd;
@@ -31,7 +32,6 @@ private:
   std::queue<unsigned char> sent_cmds;
   std::mutex lock; // guards sent_cmds and devfd
 
-  std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len);
   int OpenDev(const char* dev);
   void SendJRKReadCommand(int cmd);
   void WriteJRKCommand(int cmd, int fd);
