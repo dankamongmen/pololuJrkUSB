@@ -8,6 +8,10 @@
 
 namespace PololuJrkUSB {
 
+constexpr unsigned PololuVendorID = 0x1ffb;
+constexpr unsigned Jrk21v3ProductID = 0x0083;
+constexpr unsigned Jrk12v12ProductID = 0x0085;
+
 class Poller {
 public:
   Poller(const char* dev); // throws on failure to open device
@@ -24,7 +28,7 @@ public:
   void SetJRKTarget(int target);
   void SetJRKOff();
   void StopPolling();
-  static std::ostream& HexOutput(std::ostream& s, const unsigned char* data, size_t len);
+  static std::ostream& HexOutput(std::ostream& s, const void* data, size_t len);
 
 private:
   int devfd;
