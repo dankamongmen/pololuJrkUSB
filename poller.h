@@ -14,8 +14,12 @@ public:
   virtual ~Poller();
   void Poll();
   void ReadJRKInput();
-  void ReadJRKFeedback();
   void ReadJRKTarget();
+  void ReadJRKFeedback();
+  void ReadJRKScaledFeedback();
+  void ReadJRKErrorSum();
+  void ReadJRKDutyCycleTarget();
+  void ReadJRKDutyCycle();
   void ReadJRKErrors();
   void SetJRKTarget(int target);
   void SetJRKOff();
@@ -31,6 +35,7 @@ private:
   int OpenDev(const char* dev);
   void SendJRKReadCommand(int cmd);
   void WriteJRKCommand(int cmd, int fd);
+  int USBToSigned16(uint16_t unsig);
   void HandleUSB();
 
 };
