@@ -221,12 +221,13 @@ void Poller::SetJRKOff() {
   WriteJRKCommand(cmd, devfd); // no reply, so don't use SendJRKReadCommand
 }
 
-std::ostream& Poller::HexOutput(std::ostream& s, const unsigned char* data, size_t len) {
+std::ostream& Poller::HexOutput(std::ostream& s, const void* data, size_t len) {
   std::ios state(NULL);
   state.copyfmt(s);
   s << std::hex;
   for(size_t i = 0 ; i < len ; ++i){
-    s << std::setfill('0') << std::setw(2) << (int)data[i];
+    s << std::setfill('0') << std::setw(2) <<
+      (int)(static_cast<const unsigned char*>(data)[i]);
   }
   s.copyfmt(state);
   return s;
