@@ -41,9 +41,13 @@ Launch the program with the USB serial device node as its argument for
 interactive keyboard-driven use. The help text will be printed in response to
 the 'help' command. Other commands include:
 
-* 'feedback': Read feedback
-* 'input': Read input
-* 'target': Read target
+* 'input': Read input (0..4095)
+* 'target': Read target (0..4095)
+* 'feedback': Read feedback (0..4095)
+* 'sfeedback': Read scaled feedback (0..4095)
+* 'errorsum': Read error sum (integral) (-32768..32767)
+* 'cycletarg': Read duty cycle target (-32768..32767)
+* 'cycle': Read duty cycle (-600..600)
 * 'eflags': Read error flags
 * 'settarget': Set target, takes argument between 0 and 4095, inclusive
 * 'off': Turn motor off
