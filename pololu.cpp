@@ -273,7 +273,7 @@ constexpr unsigned char JRKUSB_GET_VARIABLES = 0x83;
 static void
 JrkGetSerialNumber(libusb_device_handle* dev, const libusb_device_descriptor* desc) {
   if(desc->iSerialNumber){
-    std::array<unsigned char, 256> serialbuf;
+    std::array<unsigned char, BUFSIZ> serialbuf;
     auto ret = libusb_get_string_descriptor_ascii(dev, desc->iSerialNumber,
                   serialbuf.data(), serialbuf.size());
     if(ret <= 0){
@@ -426,12 +426,21 @@ LibusbGetConfig(std::ostream& s, libusb_device_handle* dev) {
 }
 
 static void
-LibusbGetDesc(std::ostream& s, const libusb_device_descriptor* desc) {
+LibusbGetDesc(std::ostream& s, libusb_device_handle* dev,
+              const libusb_device_descriptor* desc) {
   s << " VendorID: ";
   uint16_t id = ntohs(desc->idVendor);
   PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id)) << " ProductID: ";
   id = ntohs(desc->idProduct);
-  PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id)) << std::endl;
+  PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id));
+  if(desc->iProduct){
+    std::array<unsigned char, BUFSIZ> name;
+    auto ret = libusb_get_string_descriptor_ascii(dev, desc->iProduct, name.data(), name.size());
+    if(ret > 0){
+      s << " (" << name.data() << ')';
+    }
+  }
+  s << std::endl;
 }
 
 // Return 0 to rearm the callback, or 1 to disable it.
@@ -460,7 +469,7 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
                                 libusb_strerror(static_cast<libusb_error>(ret)));
       }
       LibusbGetTopology(dev);
-      LibusbGetDesc(std::cout, &desc);
+      LibusbGetDesc(std::cout, handle, &desc);
       JrkGetSerialNumber(handle, &desc);
       JrkGetFirmwareVersion(handle);
       LibusbGetConfig(std::cout, handle);
