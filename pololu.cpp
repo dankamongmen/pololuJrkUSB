@@ -427,7 +427,7 @@ LibusbGetConfig(std::ostream& s, libusb_device_handle* dev) {
 
 static void
 LibusbGetDesc(std::ostream& s, const libusb_device_descriptor* desc) {
-  s << "VendorID: ";
+  s << " VendorID: ";
   uint16_t id = ntohs(desc->idVendor);
   PololuJrkUSB::Poller::HexOutput(s, &id, sizeof(id)) << " ProductID: ";
   id = ntohs(desc->idProduct);
