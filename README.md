@@ -37,6 +37,10 @@ Run `make`.
 
 ## Usage
 
+In order to run as a normal user, write and read capability is necessary for
+both the specified /dev/tty* node _and_ the raw usb device, which can be
+found in /dev/bus/usb/BUS/DEV. BUS and DEV can be found with `lsusb -t`.
+
 Launch the program with the USB serial device node as its argument for
 interactive keyboard-driven use. The help text will be printed in response to
 the 'help' command. Other commands include:
