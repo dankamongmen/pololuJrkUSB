@@ -266,21 +266,20 @@ void Poller::HandleUSB() {
       case JRKCMD_READ_DUTY: std::cout << "Duty cycle is " << USBToSigned16(uword) << std::endl; break;
       case JRKCMD_READ_ERRORS:
         std::cout << "Error bits: " <<
-          ((uword & 0x0001) ? "AwaitingCmd" : "") <<
-          ((uword & 0x0002) ? "NoPower" : "") <<
-          ((uword & 0x0004) ? "DriveError" : "") <<
-          ((uword & 0x0008) ? "InvalidInput" : "") <<
-          ((uword & 0x0010) ? "InputDisconn" : "") <<
-          ((uword & 0x0020) ? "FdbckDisconn" : "") <<
-          ((uword & 0x0040) ? "AmpsExceeded" : "") <<
-          ((uword & 0x0080) ? "SerialSig" : "") <<
-          ((uword & 0x0100) ? "UARTOflow" : "") <<
-          ((uword & 0x0200) ? "SerialOflow" : "") <<
-          ((uword & 0x0400) ? "SerialCRC" : "") <<
-          ((uword & 0x0800) ? "SerialProto" : "") <<
-          ((uword & 0x1000) ? "TimeoutRX" : "") <<
-          ((uword == 0) ? "None" : "") <<
-          std::endl;
+          ((uword & 0x0001) ? "AwaitingCmd " : "") <<
+          ((uword & 0x0002) ? "NoPower " : "") <<
+          ((uword & 0x0004) ? "DriveError " : "") <<
+          ((uword & 0x0008) ? "InvalidInput " : "") <<
+          ((uword & 0x0010) ? "InputDisconn " : "") <<
+          ((uword & 0x0020) ? "FdbckDisconn " : "") <<
+          ((uword & 0x0040) ? "AmpsExceeded " : "") <<
+          ((uword & 0x0080) ? "SerialSig " : "") <<
+          ((uword & 0x0100) ? "UARTOflow " : "") <<
+          ((uword & 0x0200) ? "SerialOflow " : "") <<
+          ((uword & 0x0400) ? "SerialCRC " : "") <<
+          ((uword & 0x0800) ? "SerialProto " : "") <<
+          ((uword & 0x1000) ? "TimeoutRX " : "") <<
+          ((uword == 0) ? "None" : "") << std::endl;
         break;
       default:
         std::cerr << "unexpected command " << (int)expcmd << std::endl;
