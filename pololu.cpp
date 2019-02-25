@@ -14,6 +14,8 @@
 #include <readline/readline.h>
 #include "poller.h"
 
+using namespace std::literals::string_literals;
+
 static void
 usage(std::ostream& os, int ret) {
   os << "usage: pololu dev\n";
@@ -275,7 +277,7 @@ JrkGetSerialNumber(libusb_device_handle* dev, const libusb_device_descriptor* de
     auto ret = libusb_get_string_descriptor_ascii(dev, desc->iSerialNumber,
                   serialbuf.data(), serialbuf.size());
     if(ret <= 0){
-      throw std::runtime_error(std::string("error extracting serialno: ") +
+      throw std::runtime_error("error extracting serialno: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
     }
     std::cout << " Serial number: " << serialbuf.data() << std::endl;
@@ -290,7 +292,7 @@ JrkGetFirmwareVersion(libusb_device_handle* dev) {
   auto ret = libusb_control_transfer(dev, BMREQ_STANDARD, 6, 0x0100, 0,
                                      buffer.data(), buffer.size(), 0);
   if(ret != buffer.size()){
-    throw std::runtime_error(std::string("error extracting firmware: ") +
+    throw std::runtime_error("error extracting firmware: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
   auto minor = buffer[FIRMWARE_OFFSET] & 0xf;
@@ -306,7 +308,7 @@ LibusbGetTopology(libusb_device* dev) {
   int bus = libusb_get_bus_number(dev);
   auto ret = libusb_get_port_numbers(dev, numbers.data(), numbers.size());
   if(ret <= 0){
-    throw std::runtime_error(std::string("error locating usb device: ") +
+    throw std::runtime_error("error locating usb device: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
   std::cout << "USB device at " << bus << "-";
@@ -415,7 +417,7 @@ LibusbGetConfig(std::ostream& s, libusb_device_handle* dev) {
     int ret = libusb_control_transfer(dev, BMREQ_VENDOR, JRKUSB_GET_PARAMETER, 0,
                         static_cast<uint8_t>(param.id), data, param.bytes, 0);
     if(ret <= 0){
-      throw std::runtime_error(std::string("error reading from usb device: ") +
+      throw std::runtime_error("error reading from usb device: "s +
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
     s << " " << param.name << ": 0x";
@@ -443,7 +445,7 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
     struct libusb_device_descriptor desc;
     auto ret = libusb_get_device_descriptor(dev, &desc);
     if(ret){
-      throw std::runtime_error(std::string("error describing usb device: ") +
+      throw std::runtime_error("error describing usb device: "s +
                                libusb_strerror(static_cast<libusb_error>(ret)));
     }
     if(desc.idVendor != PololuJrkUSB::PololuVendorID){
@@ -454,7 +456,7 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
     }else{
       libusb_device_handle* handle;
       if( (ret = libusb_open(dev, &handle)) ){
-        throw std::runtime_error(std::string("error opening usb device: ") +
+        throw std::runtime_error("error opening usb device: "s +
                                 libusb_strerror(static_cast<libusb_error>(ret)));
       }
       LibusbGetTopology(dev);
@@ -492,7 +494,7 @@ int main(int argc, const char** argv) {
                                    LIBUSB_HOTPLUG_MATCH_ANY, // class
                                    libusb_callback, nullptr, &cbhandle);
   if(ret){
-    throw std::runtime_error(std::string("registering libusb callback: ") +
+    throw std::runtime_error("registering libusb callback: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
 

@@ -110,7 +110,7 @@ enum class JrkConfigParam {
 int Poller::OpenDev(const char* dev) {
   auto fd = open(dev, O_RDWR | O_CLOEXEC | O_NONBLOCK | O_NOCTTY);
   if(fd < 0){
-    throw std::runtime_error(std::string("couldn't open ") + dev + ": " + strerror(errno));
+    throw std::runtime_error("couldn't open "s + dev + ": " + strerror(errno));
   }
   struct termios term;
   if(tcgetattr(fd, &term)){
@@ -132,7 +132,7 @@ cancelfd(-1) {
   cancelfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if(cancelfd == -1){
     close(devfd);
-    throw std::runtime_error(std::string("couldn't open eventfd: ") + strerror(errno));
+    throw std::runtime_error("couldn't open eventfd: "s + strerror(errno));
   }
   std::cout << "Opened Pololu jrk " << dev << " at fd " << devfd << std::endl;
 }
