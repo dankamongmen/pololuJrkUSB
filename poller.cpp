@@ -10,8 +10,11 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/eventfd.h>
 #include <readline/readline.h>
 #include "poller.h"
+
+using namespace std::literals::string_literals;
 
 namespace PololuJrkUSB {
 
@@ -124,20 +127,36 @@ int Poller::OpenDev(const char* dev) {
 
 Poller::Poller(const char* dev) :
 devfd(-1),
-cancelled(false) {
-    devfd = OpenDev(dev);
-    std::cout << "Opened Pololu jrk " << dev << " at fd " << devfd << std::endl;
+cancelfd(-1) {
+  devfd = OpenDev(dev);
+  cancelfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+  if(cancelfd == -1){
+    close(devfd);
+    throw std::runtime_error(std::string("couldn't open eventfd: ") + strerror(errno));
+  }
+  std::cout << "Opened Pololu jrk " << dev << " at fd " << devfd << std::endl;
 }
 
 Poller::~Poller() {
   if(devfd >= 0){
-    close(devfd); // FIXME warning on error?
-    devfd = -1;
+    if(close(devfd)){
+      std::cerr << "error closing device fd: " << strerror(errno) << std::endl;
+    }
+  }
+  if(cancelfd >= 0){
+    if(close(cancelfd)){
+      std::cerr << "error closing cancel fd: " << strerror(errno) << std::endl;
+    }
   }
 }
 
 void Poller::StopPolling() {
-  cancelled.store(true);
+  std::lock_guard<std::mutex> guard(lock);
+  uint64_t events = 1;
+  auto ret = ::write(cancelfd, &events, sizeof(events));
+  if(ret < 0){
+    throw std::runtime_error("couldn't write to cancelfd: "s + strerror(errno));
+  }
   // FIXME interrupt poller, and we can stop ticking in poll()
 }
 
@@ -294,13 +313,14 @@ void Poller::HandleUSB() {
 
 // FIXME generalize for multiple devices
 void Poller::Poll() {
-  struct pollfd pfds[2] = {
+  struct pollfd pfds[] = {
     { .fd = devfd, .events = POLLIN | POLLPRI, .revents = 0, },
+    { .fd = cancelfd, .events = POLLIN | POLLPRI, .revents = 0, },
   };
   const auto nfds = sizeof(pfds) / sizeof(*pfds);
-  while(!cancelled.load()){
-    // FIXME should not need to tick, but need signal from StopPolling()
-    auto pret = poll(pfds, nfds, 100);
+  bool cancelled = false;
+  while(!cancelled){
+    auto pret = poll(pfds, nfds, -1);
     if(pret < 0){
       std::cerr << "error polling " << nfds << " fds: " << strerror(errno) << std::endl;
       continue;
@@ -311,6 +331,8 @@ void Poller::Poll() {
           lock.lock();
           HandleUSB();
           lock.unlock();
+        }else if(pfds[i].fd == cancelfd){
+          cancelled = true; // don't need to read it to know what it means
         }else{
           std::cout << "event on bogon fd " << pfds[i].fd << std::endl; // FIXME
         }

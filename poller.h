@@ -3,7 +3,6 @@
 
 #include <queue>
 #include <mutex>
-#include <atomic>
 #include <ostream>
 
 namespace PololuJrkUSB {
@@ -27,14 +26,16 @@ public:
   void ReadJRKErrors();
   void SetJRKTarget(int target);
   void SetJRKOff();
-  void StopPolling();
   static std::ostream& HexOutput(std::ostream& s, const void* data, size_t len);
+
+  // Direct the Poller to cease operating, but don't block on its actual exit
+  void StopPolling();
 
 private:
   int devfd;
-  std::atomic<bool> cancelled;
+  int cancelfd; // eventfd used for cancellation signal
   std::queue<unsigned char> sent_cmds;
-  std::mutex lock; // guards sent_cmds and devfd
+  std::mutex lock; // guards sent_cmds, devfd, cancelfd
 
   int OpenDev(const char* dev);
   void SendJRKReadCommand(int cmd);
