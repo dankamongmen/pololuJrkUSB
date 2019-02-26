@@ -281,7 +281,14 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
         throw std::runtime_error("error opening usb device: "s +
                                 libusb_strerror(static_cast<libusb_error>(ret)));
       }
-      PololuJrkUSB::LibusbGetTopology(dev);
+      int bus, port;
+      PololuJrkUSB::LibusbGetTopology(dev, &bus, &port);
+      try{
+        auto devtty = PololuJrkUSB::FindACMDevice(bus, port);
+        std::cout << " Found control TTY: " << devtty << std::endl;
+      }catch(std::runtime_error& e){ // FIXME clamp down on acceptable errors
+        std::cerr << "Couldn't find control TTY: " << e.what() << std::endl;
+      }
       PololuJrkUSB::LibusbGetDesc(std::cout, handle, &desc);
       PololuJrkUSB::JrkGetSerialNumber(handle, &desc);
       PololuJrkUSB::JrkGetFirmwareVersion(handle);

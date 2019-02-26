@@ -1,6 +1,8 @@
 #include <array>
+#include <cstring>
 #include <iostream>
 #include <libusb.h>
+#include <dirent.h>
 #include <arpa/inet.h>
 #include "poller.h"
 
@@ -45,15 +47,18 @@ void JrkGetFirmwareVersion(libusb_device_handle* dev) {
   std::cout << " Firmware version: " << major << "." << minor << std::endl;
 }
 
-void LibusbGetTopology(libusb_device* dev) {
+// FIXME theoretically, there can be a series of ports, but we only ever seem
+// to see one from libusb_get_port_numbers(), even when hubs are chained...
+void LibusbGetTopology(libusb_device* dev, int* bus, int* port) {
   const int USB_TOPOLOGY_MAXLEN = 7;
   std::array<uint8_t, USB_TOPOLOGY_MAXLEN> numbers;
-  int bus = libusb_get_bus_number(dev);
+  *bus = libusb_get_bus_number(dev);
   auto ret = libusb_get_port_numbers(dev, numbers.data(), numbers.size());
   if(ret <= 0){
     throw std::runtime_error("error locating usb device: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
+  *port = numbers[0]; // FIXME only ever seem to see one...
   std::cout << "USB device at " << bus << "-";
   for(auto n = 0 ; n < ret ; ++n){
     std::cout << static_cast<int>(numbers[n]) << (n + 1 < ret ? "." : "");
@@ -182,6 +187,34 @@ void LibusbGetDesc(std::ostream& s, libusb_device_handle* dev,
     }
   }
   s << std::endl;
+}
+
+std::string FindACMDevice(int bus, int port) {
+  auto dir = "/sys/bus/usb/devices/"s + std::to_string(bus) + "-" +
+    std::to_string(port) + ":1.0/tty";
+  auto dd = opendir(dir.c_str());
+  if(dd == nullptr){
+    throw std::runtime_error("error opening "s + dir + ": " + strerror(errno));
+  }
+  struct dirent* dent;
+  errno = 0;
+  while( (dent = readdir(dd)) ){
+    if(strcmp(dent->d_name, ".") && strcmp(dent->d_name, "..")){
+      break;
+    }
+    errno = 0;
+  }
+  if(errno){
+    closedir(dd);
+    throw std::runtime_error("error enumerating "s + dir + ": " + strerror(errno));
+  }
+  if(dent == nullptr){
+    closedir(dd);
+    throw std::runtime_error("no device in "s + dir);
+  }
+  std::string dev = dent->d_name;
+  closedir(dd);
+  return dev;
 }
 
 void LibusbVersion(std::ostream& s) {
