@@ -274,7 +274,7 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
       std::cerr << "unexpected idVendor " << desc.idVendor << std::endl;
     }else if(desc.idProduct != PololuJrkUSB::Jrk21v3ProductID &&
              desc.idProduct != PololuJrkUSB::Jrk12v12ProductID){
-      std::cerr << "unexpected idProduct " << desc.idProduct << std::endl;
+      std::cout << "unsupported idProduct " << desc.idProduct << std::endl;
     }else{
       libusb_device_handle* handle;
       if( (ret = libusb_open(dev, &handle)) ){
@@ -321,7 +321,7 @@ int main(int argc, const char** argv) {
                                    LIBUSB_HOTPLUG_MATCH_ANY, // class
                                    libusb_callback, nullptr, &cbhandle);
   if(ret){
-    throw std::runtime_error("registering libusb callback: "s +
+    throw std::runtime_error("error registering libusb callback: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
 
