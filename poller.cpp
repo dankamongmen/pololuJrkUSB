@@ -11,7 +11,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/eventfd.h>
-#include <readline/readline.h>
 #include "poller.h"
 
 using namespace std::literals::string_literals;
@@ -125,9 +124,10 @@ int Poller::OpenDev(const char* dev) {
   return fd;
 }
 
-Poller::Poller(const char* dev) :
+Poller::Poller(const char* dev, PollerIOCallback outcb) :
 devfd(-1),
-cancelfd(-1) {
+cancelfd(-1),
+iocallback(outcb) {
   devfd = OpenDev(dev);
   cancelfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if(cancelfd == -1){
@@ -331,6 +331,9 @@ void Poller::Poll() {
           lock.lock();
           HandleUSB();
           lock.unlock();
+          if(iocallback){
+            iocallback();
+          }
         }else if(pfds[i].fd == cancelfd){
           cancelled = true; // don't need to read it to know what it means
         }else{

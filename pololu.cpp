@@ -479,6 +479,11 @@ libusb_callback(libusb_context *ctx, libusb_device *dev,
   return 0;
 }
 
+static void
+PollerReadlineCallback() {
+  rl_forced_update_display();
+}
+
 // FIXME it looks like we can maybe get firmware version with 0x060100
 int main(int argc, const char** argv) {
   if(argc != 2){
@@ -509,7 +514,7 @@ int main(int argc, const char** argv) {
 
   // Open the USB serial device, and put it in raw, nonblocking mode
   const char* dev = argv[argc - 1];
-  PololuJrkUSB::Poller poller(dev);
+  PololuJrkUSB::Poller poller(dev, PollerReadlineCallback);
 
   poller.ReadJRKErrors();
   poller.ReadJRKTarget();
