@@ -1,4 +1,5 @@
 #include <thread>
+#include <iostream>
 #include <unistd.h>
 #include "poller.h"
 
@@ -16,7 +17,8 @@ int main(void){
     p.ReadJrkDutyCycleTarget();
     p.ReadJrkDutyCycle();
     p.ReadJrkErrors();
-    //sleep(1);
+    std::cout << "wrote command suite" << std::endl;
+    usleep(500);
   }
   usb.join();
   return 0;
