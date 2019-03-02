@@ -6,8 +6,8 @@ CFLAGS:=-W -Wall -Werror -pthread $(shell pkg-config --cflags libusb-1.0)
 LFLAGS:=-lreadline $(shell pkg-config --libs libusb-1.0)
 
 BIN:=pololu
-SRC:=$(shell find -type f -iname \*.cpp -print)
-INC:=$(shell find -type f -iname \*.h -print)
+SRC:=$(wildcard *.cpp)
+INC:=$(wildcard *.h)
 OBJ:=$(SRC:%.cpp=%.o)
 
 all: bin
