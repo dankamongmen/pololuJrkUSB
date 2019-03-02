@@ -18,6 +18,7 @@ using namespace std::literals::string_literals;
 namespace PololuJrkUSB {
 
 // Serial commands using the "compact protocol" (i.e. non daisy-chained)
+constexpr unsigned char JRKCMD_READ_CURRENT = 0x8f;
 constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
 constexpr unsigned char JRKCMD_READ_TARGET = 0xa3;
 constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa5;
@@ -166,7 +167,7 @@ void Poller::WriteJRKCommand(int cmd, int fd) {
   unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
   auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
-    throw std::runtime_error("error writing command: "s + strerror(errno));
+ //   throw std::runtime_error("error writing command: "s + strerror(errno));
   }
 }
 
@@ -208,6 +209,11 @@ void Poller::ReadJrkDutyCycleTarget() {
 
 void Poller::ReadJrkDutyCycle() {
   constexpr auto cmd = JRKCMD_READ_DUTY;
+  SendJRKReadCommand(cmd);
+}
+
+void Poller::ReadJrkCurrent() {
+  constexpr auto cmd = JRKCMD_READ_CURRENT;
   SendJRKReadCommand(cmd);
 }
 
@@ -261,7 +267,7 @@ void Poller::HandleUSB() {
   unsigned char valbuf[bufsize];
   errno = 0;
 
-  // FIXME save readline state
+  // FIXME only want to read one byte if command was ReadCurrent
   while((read(devfd, valbuf, bufsize)) == bufsize){
     unsigned uword = valbuf[1] * 256 + valbuf[0];
     /* std::cout << "received bytes: 0x";
@@ -301,7 +307,6 @@ void Poller::HandleUSB() {
         std::cerr << "unexpected command " << (int)expcmd << std::endl;
     }
   }
-  // FIXME restore readline state
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
     // FIXME throw exception?

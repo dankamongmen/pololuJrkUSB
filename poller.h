@@ -27,6 +27,7 @@ public:
   void ReadJrkErrorSum();
   void ReadJrkDutyCycleTarget();
   void ReadJrkDutyCycle();
+  void ReadJrkCurrent();
   void ReadJrkErrors();
   void SetJrkTarget(int target);
   void SetJrkOff();
