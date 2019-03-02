@@ -177,42 +177,42 @@ void Poller::SendJRKReadCommand(int cmd) {
   sent_cmds.push(cmd);
 }
 
-void Poller::ReadJRKInput() {
+void Poller::ReadJrkInput() {
   constexpr unsigned char cmd = JRKCMD_READ_INPUT;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKFeedback() {
+void Poller::ReadJrkFeedback() {
   constexpr auto cmd = JRKCMD_READ_FEEDBACK;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKScaledFeedback() {
+void Poller::ReadJrkScaledFeedback() {
   constexpr auto cmd = JRKCMD_READ_SCALED_FEEDBACK;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKTarget() {
+void Poller::ReadJrkTarget() {
   constexpr auto cmd = JRKCMD_READ_TARGET;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKErrorSum() {
+void Poller::ReadJrkErrorSum() {
   constexpr auto cmd = JRKCMD_READ_ERRORSUM;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKDutyCycleTarget() {
+void Poller::ReadJrkDutyCycleTarget() {
   constexpr auto cmd = JRKCMD_READ_DUTY_TARGET;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKDutyCycle() {
+void Poller::ReadJrkDutyCycle() {
   constexpr auto cmd = JRKCMD_READ_DUTY;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::ReadJRKErrors() {
+void Poller::ReadJrkErrors() {
   constexpr auto cmd = JRKCMD_READ_ERRORS;
   SendJRKReadCommand(cmd);
 }

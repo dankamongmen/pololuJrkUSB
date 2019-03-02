@@ -20,14 +20,14 @@ public:
   Poller(const char* dev, PollerIOCallback outcb); // throws on failure to open
   virtual ~Poller();
   void Poll();
-  void ReadJRKInput();
-  void ReadJRKTarget();
-  void ReadJRKFeedback();
-  void ReadJRKScaledFeedback();
-  void ReadJRKErrorSum();
-  void ReadJRKDutyCycleTarget();
-  void ReadJRKDutyCycle();
-  void ReadJRKErrors();
+  void ReadJrkInput();
+  void ReadJrkTarget();
+  void ReadJrkFeedback();
+  void ReadJrkScaledFeedback();
+  void ReadJrkErrorSum();
+  void ReadJrkDutyCycleTarget();
+  void ReadJrkDutyCycle();
+  void ReadJrkErrors();
   void SetJRKTarget(int target);
   void SetJRKOff();
   static std::ostream& HexOutput(std::ostream& s, const void* data, size_t len);
