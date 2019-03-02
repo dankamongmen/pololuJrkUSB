@@ -166,8 +166,7 @@ void Poller::WriteJRKCommand(int cmd, int fd) {
   unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
   auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
-    std::cerr << "error writing command to " << fd << ": " << strerror(errno) << std::endl;
-    // FIXME throw exception? hrmmmm
+    throw std::runtime_error("error writing command: "s + strerror(errno));
   }
 }
 
@@ -217,11 +216,10 @@ void Poller::ReadJrkErrors() {
   SendJRKReadCommand(cmd);
 }
 
-void Poller::SetJRKTarget(int target) {
+void Poller::SetJrkTarget(int target) {
   std::lock_guard<std::mutex> guard(lock);
   if(target < 0 || target > 4095){
-    std::cerr << "invalid target " << target << std::endl;
-    return; // FIXME throw exception?
+    throw std::invalid_argument("invalid target "s + std::to_string(target));
   }
   unsigned char cmdbuf[] = {
     (unsigned char)(0xC0 + (target & 0x1F)),
@@ -229,12 +227,11 @@ void Poller::SetJRKTarget(int target) {
   };
   auto ss = ::write(devfd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
-    std::cerr << "error writing to " << devfd << ": " << strerror(errno) << std::endl;
-    return; // FIXME throw exception? hrmmmm
+    throw std::runtime_error("error writing to fd "s + strerror(errno));
   }
 }
 
-void Poller::SetJRKOff() {
+void Poller::SetJrkOff() {
   std::lock_guard<std::mutex> guard(lock);
   constexpr auto cmd = JRKCMD_MOTOR_OFF;
   WriteJRKCommand(cmd, devfd); // no reply, so don't use SendJRKReadCommand
