@@ -18,7 +18,7 @@ int main(void){
     p.ReadJrkDutyCycle();
     p.ReadJrkErrors();
     std::cout << "wrote command suite" << std::endl;
-    usleep(500);
+    usleep(1000);
   }
   usb.join();
   return 0;

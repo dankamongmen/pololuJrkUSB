@@ -167,7 +167,7 @@ void Poller::WriteJRKCommand(int cmd, int fd) {
   unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
   auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
- //   throw std::runtime_error("error writing command: "s + strerror(errno));
+    throw std::runtime_error("error writing command: "s + strerror(errno));
   }
 }
 
