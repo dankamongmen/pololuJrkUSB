@@ -117,7 +117,9 @@ int Poller::OpenDev(const char* dev) {
     close(fd);
     throw std::runtime_error("couldn't get serial settings");
   }
+  term.c_iflag &= ~(ICRNL | IXON);
   term.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  term.c_oflag &= ~OPOST;
   if(tcsetattr(fd, TCSANOW, &term)){
     close(fd);
     throw std::runtime_error("couldn't set serial raw");
@@ -158,13 +160,13 @@ void Poller::StopPolling() {
   if(ret < 0){
     throw std::runtime_error("couldn't write to cancelfd: "s + strerror(errno));
   }
-  // FIXME interrupt poller, and we can stop ticking in poll()
 }
 
 void Poller::WriteJRKCommand(int cmd, int fd) {
   assert(cmd >=0);
   assert(cmd < 0x100); // commands are a single byte
   unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
+  errno = 0;
   auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
     throw std::runtime_error("error writing command: "s + strerror(errno));
