@@ -1,5 +1,5 @@
-#ifndef POLOLUJRKUSB_POLLER
-#define POLOLUJRKUSB_POLLER
+#ifndef POLOLUJRKUSB_LIB_POLLER
+#define POLOLUJRKUSB_LIB_POLLER
 
 #include <queue>
 #include <mutex>

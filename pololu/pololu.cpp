@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include "libusb.h"
 #include "poller.h"
+#include "usb.h"
 
 using namespace std::literals::string_literals;
 

@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <arpa/inet.h>
 #include "poller.h"
+#include "usb.h"
 
 using namespace std::literals::string_literals;
 

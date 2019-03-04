@@ -1,5 +1,5 @@
-#ifndef POLOLUJRKUSB_LIBUSB
-#define POLOLUJRKUSB_LIBUSB
+#ifndef POLOLUJRKUSB_LIB_USB
+#define POLOLUJRKUSB_LIB_USB
 
 #include <string>
 #include <iostream>

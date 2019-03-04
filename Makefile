@@ -2,22 +2,30 @@
 .PHONY: all bin clean
 .DEFAULT_GOAL:=all
 
-CFLAGS:=-W -Wall -Werror -pthread $(shell pkg-config --cflags libusb-1.0)
-LFLAGS:=-lreadline $(shell pkg-config --libs libusb-1.0)
+OUT:=.out
+LIB:=lib
+BIN:=$(addprefix $(OUT)/, pololu loadtest)
+LIBSRC:=$(wildcard $(LIB)/*.cpp)
+LIBINC:=$(wildcard $(LIB)/*.h)
+LIBOBJ:=$(addprefix $(OUT)/, $(LIBSRC:%.cpp=%.o))
 
-BIN:=pololu
-SRC:=$(wildcard *.cpp)
-INC:=$(wildcard *.h)
-OBJ:=$(SRC:%.cpp=%.o)
+CFLAGS:=-W -Wall -Werror -pthread $(shell pkg-config --cflags libusb-1.0) -I$(LIB)
+LFLAGS:=-lreadline $(shell pkg-config --libs libusb-1.0)
 
 all: bin
 
 bin: $(BIN)
 
-$(BIN): $(OBJ)
-	$(CXX) $(CFLAGS) -o $@ $^ $(LFLAGS)
+$(OUT)/pololu: pololu/pololu.cpp $(LIBOBJ) $(LIBINC)
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) -o $@ $< $(LIBOBJ) $(LFLAGS)
 
-%.o: %.cpp $(INC)
+$(OUT)/loadtest: test/loadtest.cpp $(LIBOBJ) $(LIBINC)
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) -o $@ $< $(LIBOBJ) $(LFLAGS)
+
+$(OUT)/%.o: %.cpp $(LIBINC)
+	@mkdir -p $(@D)
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
 clean:
