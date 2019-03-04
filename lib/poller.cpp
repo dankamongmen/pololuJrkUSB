@@ -18,6 +18,7 @@ using namespace std::literals::string_literals;
 namespace PololuJrkUSB {
 
 // Serial commands using the "compact protocol" (i.e. non daisy-chained)
+constexpr unsigned char JRKCMD_READ_CURRENT = 0x8f;
 constexpr unsigned char JRKCMD_READ_INPUT = 0xa1;
 constexpr unsigned char JRKCMD_READ_TARGET = 0xa3;
 constexpr unsigned char JRKCMD_READ_FEEDBACK = 0xa5;
@@ -116,7 +117,9 @@ int Poller::OpenDev(const char* dev) {
     close(fd);
     throw std::runtime_error("couldn't get serial settings");
   }
+  term.c_iflag &= ~(ICRNL | IXON);
   term.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  term.c_oflag &= ~OPOST;
   if(tcsetattr(fd, TCSANOW, &term)){
     close(fd);
     throw std::runtime_error("couldn't set serial raw");
@@ -157,17 +160,16 @@ void Poller::StopPolling() {
   if(ret < 0){
     throw std::runtime_error("couldn't write to cancelfd: "s + strerror(errno));
   }
-  // FIXME interrupt poller, and we can stop ticking in poll()
 }
 
 void Poller::WriteJRKCommand(int cmd, int fd) {
   assert(cmd >=0);
   assert(cmd < 0x100); // commands are a single byte
   unsigned char cmdbuf[1] = { (unsigned char)(cmd % 0x100u) };
+  errno = 0;
   auto ss = ::write(fd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
-    std::cerr << "error writing command to " << fd << ": " << strerror(errno) << std::endl;
-    // FIXME throw exception? hrmmmm
+    throw std::runtime_error("error writing command: "s + strerror(errno));
   }
 }
 
@@ -212,16 +214,20 @@ void Poller::ReadJrkDutyCycle() {
   SendJRKReadCommand(cmd);
 }
 
+void Poller::ReadJrkCurrent() {
+  constexpr auto cmd = JRKCMD_READ_CURRENT;
+  SendJRKReadCommand(cmd);
+}
+
 void Poller::ReadJrkErrors() {
   constexpr auto cmd = JRKCMD_READ_ERRORS;
   SendJRKReadCommand(cmd);
 }
 
-void Poller::SetJRKTarget(int target) {
+void Poller::SetJrkTarget(int target) {
   std::lock_guard<std::mutex> guard(lock);
   if(target < 0 || target > 4095){
-    std::cerr << "invalid target " << target << std::endl;
-    return; // FIXME throw exception?
+    throw std::invalid_argument("invalid target "s + std::to_string(target));
   }
   unsigned char cmdbuf[] = {
     (unsigned char)(0xC0 + (target & 0x1F)),
@@ -229,12 +235,11 @@ void Poller::SetJRKTarget(int target) {
   };
   auto ss = ::write(devfd, cmdbuf, sizeof(cmdbuf));
   if(ss < 0 || (size_t)ss < sizeof(cmdbuf)){
-    std::cerr << "error writing to " << devfd << ": " << strerror(errno) << std::endl;
-    return; // FIXME throw exception? hrmmmm
+    throw std::runtime_error("error writing to fd "s + strerror(errno));
   }
 }
 
-void Poller::SetJRKOff() {
+void Poller::SetJrkOff() {
   std::lock_guard<std::mutex> guard(lock);
   constexpr auto cmd = JRKCMD_MOTOR_OFF;
   WriteJRKCommand(cmd, devfd); // no reply, so don't use SendJRKReadCommand
@@ -264,7 +269,7 @@ void Poller::HandleUSB() {
   unsigned char valbuf[bufsize];
   errno = 0;
 
-  // FIXME save readline state
+  // FIXME only want to read one byte if command was ReadCurrent
   while((read(devfd, valbuf, bufsize)) == bufsize){
     unsigned uword = valbuf[1] * 256 + valbuf[0];
     /* std::cout << "received bytes: 0x";
@@ -304,7 +309,6 @@ void Poller::HandleUSB() {
         std::cerr << "unexpected command " << (int)expcmd << std::endl;
     }
   }
-  // FIXME restore readline state
   if(errno != EAGAIN){
     std::cerr << "error reading serial: " << strerror(errno) << std::endl;
     // FIXME throw exception?

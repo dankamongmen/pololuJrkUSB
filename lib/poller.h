@@ -1,5 +1,5 @@
-#ifndef POLOLUJRKUSB_POLLER
-#define POLOLUJRKUSB_POLLER
+#ifndef POLOLUJRKUSB_LIB_POLLER
+#define POLOLUJRKUSB_LIB_POLLER
 
 #include <queue>
 #include <mutex>
@@ -27,9 +27,10 @@ public:
   void ReadJrkErrorSum();
   void ReadJrkDutyCycleTarget();
   void ReadJrkDutyCycle();
+  void ReadJrkCurrent();
   void ReadJrkErrors();
-  void SetJRKTarget(int target);
-  void SetJRKOff();
+  void SetJrkTarget(int target);
+  void SetJrkOff();
   static std::ostream& HexOutput(std::ostream& s, const void* data, size_t len);
 
   // Direct the Poller to cease operating, but don't block on its actual exit

@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <readline/history.h>
 #include <readline/readline.h>
-#include "libusb.h"
 #include "poller.h"
+#include "usb.h"
 
 using namespace std::literals::string_literals;
 
@@ -102,7 +102,7 @@ static void ReadJrkDutyCycle(PololuJrkUSB::Poller& poller,
   poller.ReadJrkDutyCycle();
 }
 
-static void SetJRKTarget(PololuJrkUSB::Poller& poller,
+static void SetJrkTarget(PololuJrkUSB::Poller& poller,
                   std::vector<std::string>::iterator begin,
                   std::vector<std::string>::iterator end) {
   if(begin == end || begin + 1 != end){
@@ -110,7 +110,11 @@ static void SetJRKTarget(PololuJrkUSB::Poller& poller,
     return;
   }
   auto target = std::stoi(*begin);
-  poller.SetJRKTarget(target);
+  if(target < 0 || target > 4095){
+    std::cerr << "command requires a single argument [0..4095]" << std::endl;
+    return;
+  }
+  poller.SetJrkTarget(target);
 }
 
 static void ReadJrkErrors(PololuJrkUSB::Poller& poller,
@@ -123,14 +127,14 @@ static void ReadJrkErrors(PololuJrkUSB::Poller& poller,
   poller.ReadJrkErrors();
 }
 
-static void SetJRKOff(PololuJrkUSB::Poller& poller,
+static void SetJrkOff(PololuJrkUSB::Poller& poller,
                std::vector<std::string>::iterator begin,
                std::vector<std::string>::iterator end) {
   if(begin != end){
     std::cerr << "command does not accept options" << std::endl;
     return;
   }
-  poller.SetJRKOff();
+  poller.SetJrkOff();
 }
 
 static void StopPolling(PololuJrkUSB::Poller& poller,
@@ -210,8 +214,8 @@ ReadlineLoop(PololuJrkUSB::Poller& poller) {
     { .cmd = "cycletarg", .fxn = &ReadJrkDutyCycleTarget, .help = "send a read duty cycle target command", },
     { .cmd = "cycle", .fxn = &ReadJrkDutyCycle, .help = "send a read duty cycle command", },
     { .cmd = "eflags", .fxn = &ReadJrkErrors, .help = "send a read error flags command", },
-    { .cmd = "settarget", .fxn = &SetJRKTarget, .help = "send set target command (arg: [0..4095])", },
-    { .cmd = "off", .fxn = &SetJRKOff, .help = "send a motor off command", },
+    { .cmd = "settarget", .fxn = &SetJrkTarget, .help = "send set target command (arg: [0..4095])", },
+    { .cmd = "off", .fxn = &SetJrkOff, .help = "send a motor off command", },
     { .cmd = "", .fxn = nullptr, .help = "", },
   }, *c;
   char* line;
