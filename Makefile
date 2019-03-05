@@ -29,4 +29,4 @@ $(OUT)/%.o: %.cpp $(LIBINC)
 	$(CXX) -c $(CFLAGS) -o $@ $<
 
 clean:
-	rm -rf $(BIN) $(OBJ)
+	rm -rf $(OUT)
