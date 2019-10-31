@@ -3,5 +3,5 @@ pipeline:
     image: library/debian:unstable
     commands:
       - apt-get update
-      - apt-get -y install devscripts git-buildpackage
+      - apt-get -y install devscripts git-buildpackage libusb-1.0-0-dev
       - make
