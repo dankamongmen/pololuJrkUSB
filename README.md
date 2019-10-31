@@ -1,5 +1,7 @@
 # PololuJrkUSB
 
+[![Build Status](https://drone.dsscaw.com:4443/api/badges/dankamongmen/pololuJrkUSB/status.svg)](https://drone.dsscaw.com:4443/dankamongmen/pololuJrkUSB)
+
 A command-line tool for driving the Pololu Jrk USB motor controllers.
 https://www.pololu.com/docs/pdf/0J38/jrk_motor_controller.pdf
 
