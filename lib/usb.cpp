@@ -38,7 +38,7 @@ void JrkGetFirmwareVersion(libusb_device_handle* dev) {
   std::array<unsigned char, FIRMWARE_RESPLEN> buffer;
   auto ret = libusb_control_transfer(dev, BMREQ_STANDARD, 6, 0x0100, 0,
                                      buffer.data(), buffer.size(), 0);
-  if(ret != buffer.size()){
+  if(ret < 0 || static_cast<size_t>(ret) != buffer.size()){
     throw std::runtime_error("error extracting firmware: "s +
                              libusb_strerror(static_cast<libusb_error>(ret)));
   }
