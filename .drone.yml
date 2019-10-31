@@ -1,0 +1,7 @@
+pipeline:
+  prep:
+    image: library/debian:unstable
+    commands:
+      - apt-get update
+      - apt-get -y install devscripts git-buildpackage
+      - make
