@@ -316,8 +316,10 @@ int main(int argc, const char** argv) {
 
   PololuJrkUSB::LibusbVersion(std::cout);
   libusb_context* usbctx;
-  if(libusb_init(&usbctx)){
-    std::cerr << "error initializing libusb" << std::endl; // FIXME details?
+  int e;
+  if( (e = libusb_init(&usbctx)) ){
+    std::cerr << "error initializing libusb: "
+              << libusb_strerror(static_cast<libusb_error>(e)) << std::endl;
     return EXIT_FAILURE;
   }
   // Register a callback for any Pololu device that is already registered, or
